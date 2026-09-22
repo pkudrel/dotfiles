@@ -30,8 +30,10 @@ if ($Command -in 'add', 'replace', 'remove' -and -not $Target) { Stop-Install $u
 # add / replace: the local file, checked before the password prompt.
 if ($Command -in 'add', 'replace') {
     if (-not (Test-Path -LiteralPath $Target -PathType Leaf)) { Stop-Install "file not found: $Target" }
-    $file = (Resolve-Path -LiteralPath $Target).Path
-    $name = Split-Path $file -Leaf
+    # The name as it is on disk (Windows ignores e.g. a trailing dot in what was typed).
+    $item = Get-Item -LiteralPath $Target
+    $file = $item.FullName
+    $name = $item.Name
     if ($name -eq $StoreManifest -or $name -like '*.prev') {
         Stop-Install "$name is reserved (${StoreManifest}: dlab-store-manifest-edit; *.prev: previous versions)"
     }
