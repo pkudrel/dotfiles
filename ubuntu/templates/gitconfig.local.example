@@ -1,0 +1,3 @@
+# ~/.gitconfig.local: this machine only, NOT in the repo. Included from ~/.gitconfig.
+# Change it with:  git config --file ~/.gitconfig.local <key> <value>
+# On WSL, install.sh sets credential.helper here (Git Credential Manager from Git for Windows).

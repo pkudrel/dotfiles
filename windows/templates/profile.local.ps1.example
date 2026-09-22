@@ -1,0 +1,3 @@
+# Documents\PowerShell\profile.local.ps1: this machine only, NOT in the repo. Loaded last by the dotfiles profile.
+# Secrets stay in Bitwarden; put only machine-specific settings here, e.g.:
+#   $env:SOME_TOOL_HOME = 'W:\tools\some-tool'

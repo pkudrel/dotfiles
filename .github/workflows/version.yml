@@ -1,0 +1,85 @@
+# Every push to main gets a version: abcversion computes it from the commit history (.abcversion.json),
+# then a GitHub Release is created for it, which also creates the tag v<version>. The release notes and the
+# run summary list the commits since the previous version. Safe to re-run (refreshes the notes).
+name: Version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version
+  cancel-in-progress: false
+
+env:
+  # Pinned so a new abcversion release cannot change the numbering unnoticed.
+  ABCVERSION_VERSION: v1.2.19
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # abcversion counts commits; also brings the existing tags
+
+      - name: Install abcversion
+        run: |
+          base="https://github.com/deneblab/abcversion/releases/download/$ABCVERSION_VERSION"
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o abcversion "$base/abcversion-linux-x64"
+          curl -fsSL -o abcversion.sha256 "$base/abcversion-linux-x64.sha256"
+          echo "$(cut -d' ' -f1 abcversion.sha256)  abcversion" | sha256sum --check --strict
+          chmod +x abcversion
+
+      - name: Compute version
+        id: version
+        run: |
+          version="$("$RUNNER_TEMP/abcversion" -p semversion)"
+          echo "Version: $version"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Release notes
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          prev="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$GITHUB_SHA^" 2>/dev/null || true)"
+          range="$GITHUB_SHA"
+          if [[ -n "$prev" ]]; then range="$prev..$GITHUB_SHA"; fi
+          notes="$RUNNER_TEMP/notes.md"
+          {
+            if [[ -n "$prev" ]]; then echo "## Changes since $prev"; else echo "## Changes"; fi
+            echo
+            git log --reverse --no-merges --format='- %s (%h)' "$range"
+            echo
+            echo "<details><summary>Details</summary>"
+            echo
+            git log --reverse --no-merges --format='### %s%n%n%b' "$range"
+            echo "</details>"
+            if [[ -n "$prev" ]]; then
+              echo
+              echo "**Full changelog:** https://github.com/$GITHUB_REPOSITORY/compare/$prev...$TAG"
+            fi
+          } > "$notes"
+          { echo "# dotfiles $TAG"; echo; cat "$notes"; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          tagged_sha="$(git rev-parse -q --verify "refs/tags/$TAG^{commit}" || true)"
+          if [[ -n "$tagged_sha" && "$tagged_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::$TAG already points at $tagged_sha, not $GITHUB_SHA (version numbering conflict)"
+            exit 1
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+            echo "Release $TAG already exists, notes refreshed"
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          fi

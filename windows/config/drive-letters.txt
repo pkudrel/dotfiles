@@ -1,0 +1,3 @@
+# Drive letters that point to folders (like subst, but permanent), set by admin/30-drive-letters.ps1.
+# One per line:  <letter>=<folder>   (environment variables are expanded; the folder is created when missing)
+Q=%USERPROFILE%\!others

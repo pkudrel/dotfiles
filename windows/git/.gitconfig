@@ -1,0 +1,50 @@
+# Git config for Windows: managed in ~/.dotfiles/windows/git, included from ~/.gitconfig by windows/scripts/60-git.ps1.
+# Machine-specific settings belong in ~/.gitconfig.local (git config --file ~/.gitconfig.local <key> <value>)
+# or below the include in ~/.gitconfig.
+
+[core]
+	autocrlf = true
+	# Windows OpenSSH talks to the Bitwarden SSH agent (named pipe openssh-ssh-agent); the ssh bundled with
+	# Git for Windows does not. So git over SSH uses the keys in Bitwarden, none on disk.
+	sshCommand = C:/Windows/System32/OpenSSH/ssh.exe
+[init]
+	defaultBranch = main
+[pull]
+	rebase = false
+[fetch]
+	prune = true
+[push]
+	autoSetupRemote = true
+[alias]
+	st = status -sb
+	br = branch
+	sw = switch
+	last = log -1 HEAD --stat
+	lg = log  --graph  -n 20 --abbrev-commit --date=iso --date-order --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+	lg1 = log  --reverse   --abbrev-commit --date=iso --date-order --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+	lg2 = log --date-order --date=iso --graph --full-history --all --pretty=format:'%x08%x09%C(red)%h %C(cyan)%ad%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08%x08 %C(bold blue)%aN%C(reset)%C(bold yellow)%d %C(reset)%s'
+	lge = log -n 5  --pretty="medium-reverse" --graph --stat
+	lgt = 	log --graph  -n 20 --date-order --date=short --pretty=format:'%C(auto)%h%d %C(reset)%s %C(bold blue)%ce %C(reset)%C(green)%cr (%cd)'
+	co = checkout
+	wipe = !git add -A && git commit -qm 'WIPE SAVEPOINT' && git reset HEAD~1 --hard
+	save = !git add -A && git commit -m 'SAVEPOINT'
+	squash-branch = !git reset $(git merge-base master $(git rev-parse --abbrev-ref HEAD))
+	wip = !git add -u && git commit -m "WIP"
+	undo-commit-stage  = reset HEAD~1 --mixed
+	undo-commit = reset HEAD~1 --soft
+	amend = commit -a --amend
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+
+# Name and e-mail ([user]): not in the repo. This machine's copy comes from Bitwarden-store
+# (install step bitwarden-store); git skips the include while the file does not exist.
+[include]
+	path = ~/.dotfiles/local/.gitconfig.user
+
+# Keep last so local settings win.
+[include]
+	path = ~/.gitconfig.local

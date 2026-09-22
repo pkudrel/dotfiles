@@ -1,0 +1,20 @@
+# winget packages installed by scripts/20-winget.ps1 on every machine (one id per line, comments allowed).
+# Optional tools are features (features/winget.txt), not here.
+# "| override=..." passes installer arguments; it only applies to a fresh install.
+# "| command=..." counts the package as present when that command is on PATH (installed another way, e.g. Store/MSI).
+Git.Git                      | command=git
+Microsoft.PowerShell         | command=pwsh
+JanDeDobbeleer.OhMyPosh
+Microsoft.VisualStudioCode | override=/VERYSILENT /NORESTART /MERGETASKS=!runcode,addcontextmenufiles,addcontextmenufolders,associatewithfiles,addtopath
+Bitwarden.Bitwarden          # all secrets, and the SSH agent for Windows and WSL
+Bitwarden.CLI                | command=bw   # bw: files and keys from/to Bitwarden (licenses, BitLocker keys)
+albertony.npiperelay         # Bitwarden SSH agent → WSL
+7zip.7zip
+Ghisler.TotalCommander
+Task.Task
+jqlang.jq
+Brave.Brave                  # gestures: feature quickgestures
+Google.Chrome
+Mozilla.Firefox
+Obsidian.Obsidian
+Google.GoogleDrive

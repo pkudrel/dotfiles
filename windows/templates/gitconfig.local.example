@@ -1,0 +1,2 @@
+# ~/.gitconfig.local: this machine only, NOT in the repo. Included last from windows/git/.gitconfig.
+# Change it with:  git config --file ~/.gitconfig.local <key> <value>

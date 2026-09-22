@@ -1,0 +1,5 @@
+# ~/.zshrc.local: this machine only, NOT in the repo. Sourced near the end of ~/.zshrc.
+# Put secrets, tokens and machine-specific PATH entries or aliases here.
+#
+# export SOME_API_TOKEN="..."
+# alias proj='cd ~/src/project'

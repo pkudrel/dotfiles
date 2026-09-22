@@ -1,0 +1,25 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*~
+/dev/
+
+# Machine-local files must never be committed
+.zshrc.local
+.gitconfig.local
+profile.local.ps1
+.zsh_history
+.zcompdump*
+
+# This machine's files from the Bitwarden-store step (e.g. .gitconfig.user) and its temp downloads
+/local/
+
+# Local planning notes (/issue-create, /issue); not part of the dotfiles
+.agents/
+
+# Claude Code files for working on this repo (local settings, skill copies); the shared skills come from Bitwarden-store
+/.claude/
+
+# sbxup config for this repo (a global gitignore may ignore .sbx)
+!/.sbx/

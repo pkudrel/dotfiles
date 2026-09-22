@@ -1,0 +1,16 @@
+# Optional features installed from winget, picked with features.ps1 (dlab-features-select).
+# One feature per line:  name | winget id | description | note shown after install (optional)
+# Features that are not in winget are scripts next to this file (NN-name.ps1).
+dotnet           | Microsoft.DotNet.SDK.10         | .NET SDK 10                                   | new terminal: dotnet --version
+node             | OpenJS.NodeJS.LTS               | Node.js LTS                                   |
+uv               | astral-sh.uv                    | Python projects, packages and versions (uv)   | uv python install
+claude-code      | Anthropic.ClaudeCode            | Claude Code CLI                               | run claude once to log in
+docker-desktop   | Docker.DockerDesktop            | Docker Desktop (sbxup builds templates with it) | start Docker Desktop once
+sbx              | Docker.sbx                      | Docker Sandboxes CLI (sbx)                    | needs Hypervisor Platform (admin.ps1), then: sbx login
+azure-cli        | Microsoft.AzureCLI              | Azure CLI (az)                                | az login
+storage-explorer | Microsoft.Azure.StorageExplorer | Azure Storage Explorer                        |
+helm             | Helm.Helm                       | Helm                                          |
+tailscale        | Tailscale.Tailscale             | Tailscale client                              | sign in from the tray icon
+sourcetree       | Atlassian.Sourcetree            | Sourcetree                                    |
+editplus         | ES-Computing.EditPlus           | EditPlus                                      |
+irfanview        | IrfanSkiljan.IrfanView          | IrfanView                                     |

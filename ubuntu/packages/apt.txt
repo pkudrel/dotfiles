@@ -1,0 +1,15 @@
+# apt packages installed by scripts/10-apt.sh (one per line, comments allowed).
+# fzf, eza and zoxide are handled by scripts/20-cli-tools.sh (version checks / fallbacks).
+zsh
+git
+stow
+curl
+wget
+unzip
+ca-certificates
+nano
+less
+ripgrep
+fd-find
+bat
+jq
