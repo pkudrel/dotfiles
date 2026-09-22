@@ -89,6 +89,9 @@ function Invoke-Add {
     Assert-StoreName $name
     if ($Store.Attachments.ContainsKey($name)) { Stop-Install "$StoreItemName already has ${name}: dlab-store-replace $Target" }
     $draft = New-ManifestDraft
+    # A manifest saved without a final line break would glue the new line onto its last one.
+    $text = [IO.File]::ReadAllText($draft)
+    if ($text -and -not $text.EndsWith("`n")) { Add-Content -LiteralPath $draft -Value '' }
     Add-Content -LiteralPath $draft -Value "$name | $StoreSystem | copy | "
     Write-Step "complete the line for $name in $StoreManifest (action params: the target path), save and close the editor"
     if (-not (Edit-StoreManifest $draft)) { Write-Warn 'cancelled, nothing saved'; return $false }

@@ -99,6 +99,8 @@ cmd_add() {
   ! store_is_attachment "$name" || die "$STORE_ITEM_NAME already has $name: dlab-store-replace $target"
   manifest_draft
   draft="$REPLY"
+  # A manifest saved without a final line break would glue the new line onto its last one.
+  [[ ! -s "$draft" || -z "$(tail -c1 "$draft")" ]] || echo >>"$draft"
   printf '%s | %s | copy | \n' "$name" "$STORE_SYSTEM" >>"$draft"
   log "complete the line for $name in $STORE_MANIFEST (action params: the target path), save and close the editor"
   manifest_edit "$draft" || { warn "cancelled, nothing saved"; CHANGED=0; return 0; }
