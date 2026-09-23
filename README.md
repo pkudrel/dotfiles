@@ -159,7 +159,7 @@ Safe to re-run: done steps only print `ok`. Replaced files are copied to `~\.dot
 |------|--------------|
 | `execution-policy` | RemoteSigned for the current user when scripts are blocked |
 | `winget` | packages in [`windows/packages/winget.txt`](windows/packages/winget.txt) that are missing (upgrades: `dlab-winget-upgradeall`) |
-| `modules` | posh-git, Terminal-Icons, DockerCompletion |
+| `modules` | posh-git, Terminal-Icons, DockerCompletion, PSFzf |
 | `local-files` | `Documents\PowerShell\profile.local.ps1`, `~\.gitconfig.local` from `windows/templates/` (only when missing) |
 | `profile` | `Documents\PowerShell\profile.ps1` becomes a loader for `windows\powershell\profile.ps1` |
 | `git` | `~\.gitconfig` gets an `[include]` of `windows/git/.gitconfig` at the top (its other settings stay) |
@@ -216,7 +216,8 @@ actions `status` / `install`, like the two above).
   Machine-only settings: `Documents\PowerShell\profile.local.ps1` (not in the repo, loaded last).
 - Fast start: before the prompt the profile loads only PSReadLine, Oh My Posh, `dlab-*` and the local profile.
   Terminal-Icons loads right after the prompt shows (`$ProfileIdleTimings`); posh-git, DockerCompletion and Task
-  completion load on the first `git`/`docker`/`task` Tab. The `Profile:` line shows the eager steps and the total in ms.
+  completion load on the first `git`/`docker`/`task` Tab, PSFzf on the first `Ctrl+R`/`Alt+T`/`Alt+C` ([fzf shortcuts](#fzf-shortcuts)).
+  The `Profile:` line shows the eager steps and the total in ms.
 - `dlab-*` commands like on Ubuntu (`windows\powershell\dlab.ps1`, `dlab-help`): `dlab-dotfiles-update`, `-status`,
   `-version`, `-cd`, `-edit`, `dlab-features-select`, `-list`, `-update`, `dlab-store-restore` (and the other `dlab-store-*`), `dlab-terminal-save`,
   `dlab-winget-upgradeall`.
@@ -367,7 +368,7 @@ Every push to `main` gets a semantic version, e.g. `0.1.8`:
 
 ## fzf shortcuts
 
-In the shell:
+In zsh (Ubuntu, WSL) and in PowerShell on Windows (PSFzf; fzf and fd come from winget):
 
 | Keys | What it does |
 |------|--------------|
@@ -378,6 +379,8 @@ In the shell:
 
 `Alt+T` and `Alt+C` list files with `fd`: hidden files included, `.git` excluded.
 fzf's usual `Ctrl+T` is not used here: Windows Terminal takes it for "new tab", so the file picker is on `Alt+T`.
+PowerShell has no `**` + `Tab`: there `Tab` is the PSReadLine completion menu. Without PSFzf `Ctrl+R` is the plain
+PSReadLine history search.
 
 Inside the fzf list:
 

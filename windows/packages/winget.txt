@@ -13,6 +13,8 @@ albertony.npiperelay         # Bitwarden SSH agent → WSL
 Ghisler.TotalCommander
 Task.Task
 jqlang.jq
+junegunn.fzf                 | command=fzf   # Ctrl+R / Alt+T / Alt+C in pwsh (PSFzf), like zsh
+sharkdp.fd                   | command=fd    # file list for fzf
 Brave.Brave                  # gestures: feature quickgestures
 Google.Chrome
 Mozilla.Firefox
