@@ -14,6 +14,7 @@
 .EXAMPLE
   pwsh -File "$HOME\.dotfiles\windows\admin.ps1" wsl onedrive
 #>
+[CmdletBinding(PositionalBinding = $false)]
 param(
     # Show what would change, change nothing.
     [switch] $DryRun,
