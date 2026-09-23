@@ -14,7 +14,7 @@
   - [Windows optional features](#windows-optional-features)
   - [Windows: PowerShell profile and commands](#windows-powershell-profile-and-commands)
 - [SSH keys in WSL (Bitwarden)](#ssh-keys-in-wsl-bitwarden)
-- [Private files (Bitwarden-store)](#private-files-bitwarden-store)
+- [Private files (bitwarden-store)](#private-files-bitwarden-store)
 - [Everyday use](#everyday-use)
 - [dlab commands](#dlab-commands)
 - [Versions](#versions)
@@ -159,7 +159,7 @@ Safe to re-run: done steps only print `ok`. Replaced files are copied to `~\.dot
 | `git` | `~\.gitconfig` gets an `[include]` of `windows/git/.gitconfig` at the top (its other settings stay) |
 | `font` | MesloLGS NF for the current user |
 | `terminal` | Windows Terminal `settings.json` from `windows/terminal/settings.json`; when they differ it asks before replacing |
-| `bitwarden-store` | [private files](#private-files-bitwarden-store) from the Bitwarden note `Bitwarden-store`; asks for the master password (Enter skips the step), UAC for folders like Program Files |
+| `bitwarden-store` | [private files](#private-files-bitwarden-store) from the Bitwarden note `bitwarden-store`; asks for the master password (Enter skips the step), UAC for folders like Program Files |
 | `features` | installs/updates the remembered optional features |
 
 Windows Terminal: the repo keeps the whole `settings.json`. Save this machine's version into the repo with
@@ -174,7 +174,7 @@ on their own after a replace.
 |------|--------------|
 | `hypervisor-platform` | a hypervisor for `sbx`: skipped when Hyper-V or Virtual Machine Platform is on, else enables Windows Hypervisor Platform; restart |
 | `dev-drive` | `W:` ReFS Dev Drive, label `Work`, 195 GB taken from `C:`, trusted. Skipped when `W:` already is one. Asks before shrinking `C:`. Other size/letter: `admin.ps1 -DevDriveSizeGB 250 -DevDriveLetter D` |
-| `bitlocker` | checks that `C:` is protected; encrypts `W:` like `C:` with automatic unlock when it is not; asks whether to save the recovery keys of all drives to Bitwarden (bw CLI): a secure note "BitLocker recovery keys - <computer>", one hidden field per drive, never written to a file or shown |
+| `bitlocker` | checks that `C:` is protected; encrypts `W:` like `C:` with automatic unlock when it is not; asks whether to save the recovery keys of all drives to Bitwarden (bw CLI): a secure note `bitwarden-bitlocker-<computer>` (computer name in lower case), one hidden field per drive, never written to a file or shown |
 | `drive-letters` | letters from [`windows/config/drive-letters.txt`](windows/config/drive-letters.txt) (`Q:` → `%USERPROFILE%\!others`); restart |
 | `ssh-agent-service` | Windows "OpenSSH Authentication Agent" off, so Bitwarden's agent gets the pipe |
 | `wsl` (only when named) | `admin.ps1 wsl`: WSL with Ubuntu-26.04, then [New WSL](#new-wsl-ubuntu-2604) from "In the new Ubuntu" |
@@ -256,9 +256,9 @@ Git in WSL is unaffected: it uses HTTPS with Git Credential Manager, not the age
 itself and any repository whose remote is SSH. On a native server none of this applies — there SSH keys come
 from the agent you forward over the connection.
 
-## Private files (Bitwarden-store)
+## Private files (bitwarden-store)
 
-Files that must not be in the repo are attachments of **one Bitwarden secure note named `Bitwarden-store`** (attachments
+Files that must not be in the repo are attachments of **one Bitwarden secure note named `bitwarden-store`** (attachments
 need Bitwarden Premium). The repo knows only what can be done with a file; the list of files and where they go is the
 attachment **`_manifest.txt`** of the same note. The note's text stays empty.
 
@@ -281,7 +281,7 @@ id_example          | linux   | copy   | ~/.ssh/id_example      | mode=600
 
 | Column | Values |
 |--------|--------|
-| attachment | exact attachment name on `Bitwarden-store` (one attachment may be used by several lines) |
+| attachment | exact attachment name on `bitwarden-store` (one attachment may be used by several lines) |
 | system | `windows`, `linux` (Ubuntu and WSL) or `all` |
 | action | `copy`: to the path in *action params* (`~` on both systems, `%VAR%` on Windows, `$VAR` on Linux; must be absolute; folders are created; UAC for folders like Program Files). `font`: install the `.ttf`/`.otf` for the current user (no params). `unzip`: unpack the `.zip` into the folder in *action params* (files that differ are overwritten, others are left alone) |
 | extra | `host=PC1,PC2` only on these computers; `when=missing` only when the file does not exist yet (for files an app changes itself; default `always`); `mode=600` file permissions on Linux |
@@ -337,7 +337,7 @@ Shell functions named `dlab-{area}-{action}` (`ubuntu/zsh/.config/zsh/dlab.zsh`)
 | `dlab-dotfiles-edit` | open `~/.dotfiles` in VS Code |
 | `dlab-dotfiles-stow` | re-link config files (`install.sh stow`), e.g. after new zsh modules |
 | `dlab-store-restore` | [private files](#private-files-bitwarden-store) from Bitwarden (`install.sh bitwarden-store`; asks for the master password) |
-| `dlab-store-list`, `-add`, `-replace`, `-remove`, `-manifest-edit` | change what is in Bitwarden-store, see [Private files](#private-files-bitwarden-store) |
+| `dlab-store-list`, `-add`, `-replace`, `-remove`, `-manifest-edit` | change what is in bitwarden-store, see [Private files](#private-files-bitwarden-store) |
 | `dlab-features-select` | optional features checklist; with names installs them directly |
 | `dlab-features-list` | state of every optional feature |
 | `dlab-features-update` | install/update the remembered features |
@@ -427,7 +427,7 @@ with the same arguments (`uv node`, `--list`, `--update`).
 
 Rules:
 
-- **Machine-specific settings** go to `~/.zshrc.local` / `~/.gitconfig.local`; **private files** to `Bitwarden-store`.
+- **Machine-specific settings** go to `~/.zshrc.local` / `~/.gitconfig.local`; **private files** to `bitwarden-store`.
 - **Never `git config --global`**: it writes into the shared `~/.gitconfig` in this repo. Use `--file ~/.gitconfig.local`.
 - **Copied files do not sync back.** If you change `~/.claude/settings.json` or `~/.agents/config.md` and want the change on
   new machines, copy it into `ubuntu/templates/` and commit.

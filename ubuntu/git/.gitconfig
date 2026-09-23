@@ -30,7 +30,7 @@
 	undo-commit = reset HEAD~1 --soft
 	amend = commit -a --amend
 
-# Name and e-mail ([user]): not in the repo. This machine's copy comes from Bitwarden-store
+# Name and e-mail ([user]): not in the repo. This machine's copy comes from bitwarden-store
 # (install step bitwarden-store); git skips the include while the file does not exist.
 [include]
 	path = ~/.dotfiles/local/.gitconfig.user

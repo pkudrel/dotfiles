@@ -14,10 +14,10 @@ for pkg in "${file_packages[@]}"; do
   done < <(find "$UBUNTU_DIR/$pkg" \( -type f -o -type l \) -print0)
 done
 
-# Claude Code skills are no longer in the repo (they come from Bitwarden-store): drop the old link into it.
+# Claude Code skills are no longer in the repo (they come from bitwarden-store): drop the old link into it.
 if [[ -L "$HOME/.claude/skills" && "$(readlink "$HOME/.claude/skills")" == *"ubuntu/claude/.claude/skills"* ]]; then
   rm "$HOME/.claude/skills"
-  ok "removed the old link ~/.claude/skills (skills now come from Bitwarden-store)"
+  ok "removed the old link ~/.claude/skills (skills now come from bitwarden-store)"
 fi
 
 stow --dir "$UBUNTU_DIR" --target "$HOME" --no-folding --restow "${file_packages[@]}"

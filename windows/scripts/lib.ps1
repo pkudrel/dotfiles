@@ -10,7 +10,7 @@ $BackupDir = if ($env:DOTFILES_BACKUP_DIR) { $env:DOTFILES_BACKUP_DIR }
 $DotfilesConfigDir = Join-Path $HOME '.config\dotfiles'
 
 # This machine's files inside the repo folder, never committed (/local/ in .gitignore): files from the
-# Bitwarden-store step (e.g. .gitconfig.user) and its temp downloads.
+# bitwarden-store step (e.g. .gitconfig.user) and its temp downloads.
 $DotfilesLocalDir = Join-Path (Split-Path $WindowsDir -Parent) 'local'
 
 # Dry run (install.ps1 -DryRun, features.ps1 --dry-run): steps report what they would change and change nothing.
