@@ -13,7 +13,6 @@
   - [Windows admin steps (admin.ps1)](#windows-admin-steps-adminps1)
   - [Windows optional features](#windows-optional-features)
   - [Windows: PowerShell profile and commands](#windows-powershell-profile-and-commands)
-- [What you get](#what-you-get)
 - [SSH keys in WSL (Bitwarden)](#ssh-keys-in-wsl-bitwarden)
 - [Private files (Bitwarden-store)](#private-files-bitwarden-store)
 - [Everyday use](#everyday-use)
@@ -220,18 +219,6 @@ actions `status` / `install`, like the two above).
   machine settings in `~\.gitconfig.local` or below the include in `~\.gitconfig`.
 - Only profile steps (the old way): `windows\powershell\install-profile.ps1` still works and runs those steps of `install.ps1`.
 - From WSL both clones are visible: `~/.dotfiles` (WSL) and `/mnt/c/Users/<you>/.dotfiles` (Windows) are separate repos.
-
-## What you get
-
-- zsh + Oh My Zsh, Powerlevel10k (lean preset restyled like Oh My Posh "paradox": powerline segments, blue `❯`), zsh-autosuggestions, zsh-syntax-highlighting
-  (long paths collapse like paradox: `~ > 📂 > src > Rules`; middle folders longer than `MY_DIR_MIXED_THRESHOLD` in `.p10k.zsh` become an icon)
-- fzf (Ctrl+R history, **Alt+T** files, Alt+C cd), zoxide, eza, bat, fd, ripgrep
-  (Ctrl+T is "new tab" in Windows Terminal, so files are on Alt+T; see [fzf shortcuts](#fzf-shortcuts))
-- git config with aliases, `pull` = merge
-- WSL: SSH keys served by the Bitwarden desktop agent on Windows (see [SSH keys in WSL](#ssh-keys-in-wsl-bitwarden))
-- Private files from one Bitwarden secure note, on Windows and Ubuntu (see [Private files](#private-files-bitwarden-store))
-- Optional features from a checklist: uv, node (fnm), .NET SDK 10, Docker Engine, Tailscale, Claude Code (see [Optional features](#optional-features))
-- `EDITOR`: `code --wait` inside a VS Code terminal, otherwise `nano`
 
 ## SSH keys in WSL (Bitwarden)
 
