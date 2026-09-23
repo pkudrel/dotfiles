@@ -6,7 +6,7 @@
   1. checks winget
   2. admin.ps1   (one UAC prompt; Dev Drive W:, Q:, Hypervisor Platform, ssh-agent service)
   3. install.ps1 (packages, profile, git, font, Windows Terminal)
-  4. features.ps1 checklist (dotnet, node, sbx, ...)
+  4. features.ps1 checklist (dotnet, node, sbx, wsl, ...)
   5. what is left to do by hand, and a restart when one is needed
   Day to day use admin.ps1 / install.ps1 / dlab-* directly.
 .EXAMPLE
@@ -54,6 +54,8 @@ try {
         # Cancelled checklist or a failed feature should not hide the rest of the setup.
         Write-Warn "features: $($_.Exception.Message) (pick them later: dlab-features-select)"
     }
+    # The wsl feature needs a restart on a clean Windows.
+    $rebootRequired = $rebootRequired -or [bool] $global:DotfilesRebootRequired
 }
 catch {
     # Just the message, not PowerShell's error view pointing at Stop-Install in lib.ps1.
@@ -73,7 +75,7 @@ Write-Host @'
       [ ] Google Drive: sign in;  Obsidian: open the vault
       [ ] Microsoft Store → Library → Get updates
       [ ] features you picked: follow what they printed (sbx login, claude, QuickGestures in Brave, ...)
-      [ ] WSL (optional): admin.ps1 wsl, then README "New WSL" from "In the new Ubuntu"
+      [ ] WSL (if you picked the wsl feature): start Ubuntu once from the Start menu, then README "New WSL" from "In the new Ubuntu"
     Later: dlab-help lists the dlab-* commands (in a new pwsh tab).
 
 '@
@@ -86,7 +88,7 @@ if (-not $rebootRequired) {
     Write-Ok 'setup done; open a new pwsh tab'
     return
 }
-$answer = Read-Host 'A restart is needed to finish (Hypervisor Platform / drive letters). Restart now? [y/N]'
+$answer = Read-Host 'A restart is needed to finish (Hypervisor Platform / drive letters / WSL). Restart now? [y/N]'
 if ($answer -match '^\s*[yt]') {
     Restart-Computer
 }

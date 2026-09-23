@@ -31,10 +31,16 @@ windows/    setup.ps1 (first run), install.ps1 + scripts/ (numbered steps), admi
 
 Prerequisites on Windows: **Git for Windows** (provides Git Credential Manager) and Windows Terminal.
 
+With these dotfiles on Windows, WSL is an [optional feature](#windows-optional-features): tick `wsl` in the
+`setup.ps1` checklist or run `dlab-features-select wsl`. On a clean Windows it asks for UAC and needs a restart.
+Without them:
+
 ```powershell
 wsl --list --online            # exact distro name
 wsl --install -d Ubuntu-26.04
 ```
+
+Start Ubuntu once from the Start menu: it asks for the Linux user name and password.
 
 In the new Ubuntu:
 
@@ -227,14 +233,15 @@ Then `windows\setup.ps1` (`-DryRun` to preview) runs:
 3. `install.ps1`: the [install steps](#windows-install-steps-installps1). Some installers (Chrome, 7-Zip, ...) ask for
    UAC themselves;
 4. the [optional features](#windows-optional-features) checklist;
-5. a checklist of what is left to do by hand, and a restart when the admin steps need one.
+5. a checklist of what is left to do by hand, and a restart when the admin steps or the `wsl` feature need one.
 
 Then, once per machine (`setup.ps1` prints the same list):
 
 - Bitwarden: sign in, **Settings → enable SSH agent**. It holds all secrets, including the SSH keys; `ssh` on Windows
   and in WSL (see [SSH keys in WSL](#ssh-keys-in-wsl-bitwarden)) and git over SSH use it, no key on disk.
 - Google Drive and Obsidian: sign in / open the vault.
-- If you picked them: `sbx login`, `claude` (log in), QuickGestures in Brave (the feature prints the steps).
+- If you picked them: `sbx login`, `claude` (log in), QuickGestures in Brave (the feature prints the steps),
+  WSL (start Ubuntu once, then [New WSL](#new-wsl-ubuntu-2604) from "In the new Ubuntu").
 
 Update later: `dlab-dotfiles-update` (`git pull --ff-only` + `install.ps1`).
 
@@ -273,7 +280,6 @@ on their own after a replace.
 | `bitlocker` | checks that `C:` is protected; encrypts `W:` like `C:` with automatic unlock when it is not; asks whether to save the recovery keys of all drives to Bitwarden (bw CLI): a secure note "BitLocker recovery keys - <computer>", one hidden field per drive, never written to a file or shown |
 | `drive-letters` | letters from [`windows/config/drive-letters.txt`](windows/config/drive-letters.txt) (`Q:` → `%USERPROFILE%\!others`); restart |
 | `ssh-agent-service` | Windows "OpenSSH Authentication Agent" off, so Bitwarden's agent gets the pipe |
-| `wsl` (only when named) | `admin.ps1 wsl`: WSL with Ubuntu-26.04, then [New WSL](#new-wsl-ubuntu-2604) from "In the new Ubuntu" |
 | `remove-onedrive` (only when named) | `admin.ps1 onedrive`: uninstall OneDrive, block it by policy, hide it in Explorer |
 
 Drive letters use `%USERPROFILE%` of the account that runs the elevated step: run `admin.ps1` from your own account.
@@ -289,16 +295,17 @@ dlab-features-list              # state of every feature
 Before the first new tab (no `dlab-*` yet): `~\.dotfiles\windows\features.ps1` with the same arguments.
 Features are installed from winget whenever possible ([`windows/features/winget.txt`](windows/features/winget.txt):
 dotnet, node, uv, claude-code, docker-desktop, sbx, azure-cli, storage-explorer, helm, tailscale, sourcetree,
-editplus, irfanview). Two are scripts because winget does not have them:
+editplus, irfanview). Three are scripts because winget does not have them:
 
 | Feature | What gets installed | After install |
 |---------|---------------------|---------------|
+| `wsl` | WSL with Ubuntu-26.04 (`wsl --install -d Ubuntu-26.04 --no-launch`; UAC on a clean Windows) | restart when it says so; start Ubuntu once from the Start menu, then [New WSL](#new-wsl-ubuntu-2604) from "In the new Ubuntu" |
 | `sbxup` | [sbxup](https://github.com/deneblab/sbx-templates) (official installer, `--self-update` later) | needs the `sbx` feature; `sbx login` |
 | `quickgestures` | [QuickGestures](https://github.com/deneblab/QuickGestures) release in `%LOCALAPPDATA%\dotfiles\QuickGestures` | Brave: `brave://extensions` → Developer mode → Load unpacked → that folder; after updates click reload |
 
 The selection is remembered in `~\.config\dotfiles\features`; `install.ps1` updates those features on every run.
 New winget feature: one line in `features/winget.txt`. Other: a script `features/NN-name.ps1` (line 1 = description,
-actions `status` / `install`, like the two above).
+actions `status` / `install`, like the three above).
 
 ### Windows: PowerShell profile and commands
 

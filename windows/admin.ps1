@@ -5,14 +5,15 @@
 .DESCRIPTION
   Runs windows\admin\NN-*.ps1 in order: Hypervisor Platform, Dev Drive, BitLocker (+ recovery keys to Bitwarden),
   drive letters, ssh-agent service.
-  Arguments select steps whose name contains them. Opt-in steps (wsl, remove-onedrive) run only when named.
+  Arguments select steps whose name contains them. Opt-in steps (remove-onedrive) run only when named.
+  WSL is an optional feature: dlab-features-select wsl.
   Run it before install.ps1 on a new machine, so W: exists when install.ps1 sets up Windows Terminal.
 .EXAMPLE
   pwsh -File "$HOME\.dotfiles\windows\admin.ps1"
 .EXAMPLE
   pwsh -File "$HOME\.dotfiles\windows\admin.ps1" -DryRun
 .EXAMPLE
-  pwsh -File "$HOME\.dotfiles\windows\admin.ps1" wsl onedrive
+  pwsh -File "$HOME\.dotfiles\windows\admin.ps1" onedrive
 #>
 param(
     # Show what would change, change nothing.
@@ -21,8 +22,6 @@ param(
     [int] $DevDriveSizeGB = 195,
     [string] $DevDriveLetter = 'W',
     [string] $DevDriveLabel = 'Work',
-    # WSL distribution for the opt-in wsl step.
-    [string] $WslDistro = 'Ubuntu-26.04',
     # Set by the elevated relaunch: keep its window open at the end.
     [switch] $PauseAtEnd,
     [Parameter(ValueFromRemainingArguments)]
@@ -35,7 +34,7 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Admin)) {
     # Relaunch elevated with the same arguments, in a window that stays open until Enter.
     $forward = @('-NoProfile', '-File', $PSCommandPath, '-PauseAtEnd')
-    foreach ($name in 'DevDriveSizeGB', 'DevDriveLetter', 'DevDriveLabel', 'WslDistro') {
+    foreach ($name in 'DevDriveSizeGB', 'DevDriveLetter', 'DevDriveLabel') {
         if ($PSBoundParameters.ContainsKey($name)) { $forward += @("-$name", "$($PSBoundParameters[$name])") }
     }
     if ($DryRun) { $forward += '-DryRun' }
@@ -61,7 +60,6 @@ $options = @{
     DevDriveSizeGB = $DevDriveSizeGB
     DevDriveLetter = $DevDriveLetter.TrimEnd(':').ToUpperInvariant()
     DevDriveLabel  = $DevDriveLabel
-    WslDistro      = $WslDistro
 }
 $global:DotfilesRebootRequired = $false
 
