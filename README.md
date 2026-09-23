@@ -1,15 +1,5 @@
 # dotfiles
 
-```
-ubuntu/     install.sh, scripts/ (numbered steps), packages/apt.txt,
-            features.sh + features/ (optional tools),
-            Stow packages: zsh/, git/; templates/ (copied once)
-windows/    setup.ps1 (first run), install.ps1 + scripts/ (numbered steps), admin.ps1 + admin/ (need admin),
-            packages/winget.txt, features.ps1 + features/ (optional tools), powershell/ (profile, dlab commands),
-            git/, terminal/, config/, templates/, fonts/, oh-my-posh/
-.github/    workflows/version.yml: version tag + GitHub Release on every push to main (.abcversion.json)
-```
-
 `ubuntu/` and `windows/` are independent: neither uses files from the other.
 
 ## Contents
