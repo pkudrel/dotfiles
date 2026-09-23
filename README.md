@@ -1,7 +1,5 @@
 # dotfiles
 
-Shell and tool configuration for Ubuntu (WSL or a native server) and Windows 11.
-
 ```
 ubuntu/     install.sh, scripts/ (numbered steps), packages/apt.txt,
             features.sh + features/ (optional tools),
@@ -14,18 +12,27 @@ windows/    setup.ps1 (first run), install.ps1 + scripts/ (numbered steps), admi
 
 `ubuntu/` and `windows/` are independent: neither uses files from the other.
 
-## What you get
+## Contents
 
-- zsh + Oh My Zsh, Powerlevel10k (lean preset restyled like Oh My Posh "paradox": powerline segments, blue `❯`), zsh-autosuggestions, zsh-syntax-highlighting
-  (long paths collapse like paradox: `~ > 📂 > src > Rules`; middle folders longer than `MY_DIR_MIXED_THRESHOLD` in `.p10k.zsh` become an icon)
-- fzf (Ctrl+R history, **Alt+T** files, Alt+C cd), zoxide, eza, bat, fd, ripgrep
-  (Ctrl+T is "new tab" in Windows Terminal, so files are on Alt+T; see [fzf shortcuts](#fzf-shortcuts))
-- git config with aliases, `pull` = merge; name and e-mail come from Bitwarden (not in the repo)
-- WSL: SSH keys served by the Bitwarden desktop agent on Windows (see [SSH keys in WSL](#ssh-keys-in-wsl-bitwarden))
-- Private files (licenses, fonts, git identity) from one Bitwarden secure note, on Windows and Ubuntu (see [Private files](#private-files-bitwarden-store))
-- Claude Code skills on Windows and Ubuntu from Bitwarden-store (a zip; the CLI itself is an optional feature)
-- Optional features from a checklist: uv, node (fnm), .NET SDK 10, Docker Engine, Tailscale, Claude Code (see [Optional features](#optional-features))
-- `EDITOR`: `code --wait` inside a VS Code terminal, otherwise `nano`
+- [New WSL (Ubuntu 26.04)](#new-wsl-ubuntu-2604)
+- [New server (native Ubuntu 26.04, over SSH)](#new-server-native-ubuntu-2604-over-ssh)
+- [New Windows machine (Windows 11)](#new-windows-machine-windows-11)
+  - [Step 0: the account (before anything else)](#step-0-the-account-before-anything-else)
+  - [Step 1: setup](#step-1-setup)
+  - [Windows install steps (install.ps1)](#windows-install-steps-installps1)
+  - [Windows admin steps (admin.ps1)](#windows-admin-steps-adminps1)
+  - [Windows optional features](#windows-optional-features)
+  - [Windows: PowerShell profile and commands](#windows-powershell-profile-and-commands)
+- [What you get](#what-you-get)
+- [SSH keys in WSL (Bitwarden)](#ssh-keys-in-wsl-bitwarden)
+- [Private files (Bitwarden-store)](#private-files-bitwarden-store)
+- [Everyday use](#everyday-use)
+- [dlab commands](#dlab-commands)
+- [Versions](#versions)
+- [fzf shortcuts](#fzf-shortcuts)
+- [Optional features](#optional-features)
+- [Which files are linked, copied or not in the repo](#which-files-are-linked-copied-or-not-in-the-repo)
+- [Adding a tool later](#adding-a-tool-later)
 
 ## New WSL (Ubuntu 26.04)
 
@@ -51,103 +58,11 @@ Git for Windows) as the credential helper in `~/.gitconfig.local`.
 After that:
 
 1. Nerd Font, once per Windows computer: see [`windows/fonts/README.md`](windows/fonts/README.md).
-   `install.sh` asked for the Bitwarden master password for the [private files](#private-files-bitwarden-store)
-   (git name and e-mail); Enter skipped it: later `dlab-store-restore`.
+   `install.sh` asked for the Bitwarden master password for the [private files](#private-files-bitwarden-store);
+   Enter skipped it: later `dlab-store-restore`.
 2. SSH keys from Bitwarden, once per Windows computer: see [SSH keys in WSL](#ssh-keys-in-wsl-bitwarden).
 3. Optional tools you want on this machine: `dlab-features-select` (Claude Code is one of them;
    after installing it, run `claude` once to log in).
-
-## SSH keys in WSL (Bitwarden)
-
-In WSL, `ssh` gets its keys from the **Bitwarden desktop agent running on Windows**. No private key is
-copied into the distro, and every use of a key asks Bitwarden on the Windows side.
-
-Bitwarden serves the agent on the Windows named pipe `\\.\pipe\openssh-ssh-agent`, which WSL cannot open
-directly. `~/.config/zsh/wsl.zsh` therefore points `SSH_AUTH_SOCK` at `~/.ssh/bitwarden-agent.sock` and, when
-nothing is listening there yet, starts `socat` to relay that socket through `npiperelay.exe`. It starts once
-per distro boot, from whichever shell comes first; further shells reuse it.
-
-Three one-off steps on each Windows computer:
-
-```powershell
-winget install --id albertony.npiperelay -e
-```
-
-1. The command above (per user, no admin). `albertony.npiperelay` is the maintained fork;
-   `jstarks.npiperelay` in winget is the abandoned original.
-2. Bitwarden Desktop → **Settings** → enable the **SSH agent**.
-3. **Services** → **OpenSSH Authentication Agent** → Startup type **Disabled**. It claims the same named
-   pipe as Bitwarden, and whichever starts first wins. `windows\admin.ps1` does this (step `ssh-agent-service`), and
-   `install.ps1` installs npiperelay (step 1) with the other winget packages.
-
-Then, in a new WSL shell:
-
-```bash
-ssh-add -l                      # must list the keys held in Bitwarden
-```
-
-Empty or an error: unlock Bitwarden, check its SSH agent setting, and confirm `npiperelay.exe` is reachable
-from WSL (`command -v npiperelay.exe`). `install.sh` installs `socat` and reports what is missing.
-
-Git in WSL is unaffected: it uses HTTPS with Git Credential Manager, not the agent. The agent serves `ssh`
-itself and any repository whose remote is SSH. On a native server none of this applies — there SSH keys come
-from the agent you forward over the connection.
-
-## Private files (Bitwarden-store)
-
-Files that must not be in the repo (licenses, fonts that may not be redistributed, the git name and e-mail) are
-attachments of **one Bitwarden secure note named `Bitwarden-store`** (attachments need Bitwarden Premium). The repo knows
-only what can be done with a file; the list of files and where they go is the attachment **`_manifest.txt`** of the same
-note. The note's text stays empty.
-
-The install step `bitwarden-store` (Windows `install.ps1`, Ubuntu `install.sh`; again later with `dlab-store-restore`)
-asks for the master password once (Enter skips), reads `_manifest.txt`, and applies every line for this system and computer.
-A file that differs is overwritten; an equal one is left alone (no write, no UAC). Downloads go to
-`~/.dotfiles/local/tmp/` and are removed at the end, also after an error.
-
-`_manifest.txt` (plain text; `#` starts a comment line):
-
-```text
-format: 1
-# attachment    | system  | action | action params          | extra
-license.key     | windows | copy   | %ProgramFiles%\App\license.key
-SomeFont.ttf    | windows | font
-gitconfig.user  | all     | copy   | ~/.dotfiles/local/.gitconfig.user
-claude-skills.zip | all   | unzip  | ~/.claude/skills
-id_example      | linux   | copy   | ~/.ssh/id_example      | mode=600
-```
-
-| Column | Values |
-|--------|--------|
-| attachment | exact attachment name on `Bitwarden-store` (one attachment may be used by several lines) |
-| system | `windows`, `linux` (Ubuntu and WSL) or `all` |
-| action | `copy`: to the path in *action params* (`~` on both systems, `%VAR%` on Windows, `$VAR` on Linux; must be absolute; folders are created; UAC for folders like Program Files). `font`: install the `.ttf`/`.otf` for the current user (no params). `unzip`: unpack the `.zip` into the folder in *action params* (files that differ are overwritten, others are left alone) |
-| extra | `host=PC1,PC2` only on these computers; `when=missing` only when the file does not exist yet (for files an app changes itself; default `always`); `mode=600` file permissions on Linux |
-
-A line with a mistake (unknown action or option, relative path, missing attachment) is reported and skipped; the rest
-still runs. The summary shows `ok / updated / skipped / errors`.
-
-Change the store with the `dlab-store-*` commands (Windows `windows\store.ps1`, Ubuntu `ubuntu/store.sh`); no change in
-the repo. Each asks for the master password once and, after a change, updates this machine in the same session:
-
-| Command | What it does |
-|---------|--------------|
-| `dlab-store-list` | attachments, the manifest lines that use them, lines without an attachment, unused attachments |
-| `dlab-store-add <file>` | opens `_manifest.txt` in the editor with a line for the file to complete (target path); after a valid save uploads the file and the manifest |
-| `dlab-store-replace <file>` | new version of the attachment with that file name; the old one stays as `<name>.prev` |
-| `dlab-store-remove <name>` | shows the manifest lines of the attachment, asks, removes both (the file stays as `<name>.prev`) |
-| `dlab-store-manifest-edit` | edits `_manifest.txt` (a template when there is none); a manifest with mistakes is shown again, not saved |
-| `dlab-store-restore` | the install step again: put every file in place |
-
-Every save keeps one step back: `<name>.prev` (also `_manifest.txt.prev`). A replace deletes the old attachment before
-the upload (Bitwarden cannot edit an attachment in place, and two with one name would block it); if the upload fails, the
-old version is `<name>.prev` and running the same command again finishes it. Editor: `$EDITOR` (Windows: else VS Code,
-else Notepad; Ubuntu: else `nano`). `add` and `manifest-edit` create the secure note when it does not exist yet (asks).
-
-Git identity: both `.gitconfig` files include `~/.dotfiles/local/.gitconfig.user` (a `[user]` block with `name` and
-`email`), which comes from the store. Without it git cannot commit; the step warns.
-
-`~/.dotfiles/local/` is this machine's folder inside the repo, in `.gitignore`: never commit anything from it.
 
 ## New server (native Ubuntu 26.04, over SSH)
 
@@ -253,9 +168,9 @@ Safe to re-run: done steps only print `ok`. Replaced files are copied to `~\.dot
 | `local-files` | `Documents\PowerShell\profile.local.ps1`, `~\.gitconfig.local` from `windows/templates/` (only when missing) |
 | `profile` | `Documents\PowerShell\profile.ps1` becomes a loader for `windows\powershell\profile.ps1` |
 | `git` | `~\.gitconfig` gets an `[include]` of `windows/git/.gitconfig` at the top (its other settings stay) |
-| `font` | MesloLGS NF for the current user (Consolas NF comes from `bitwarden-store`) |
+| `font` | MesloLGS NF for the current user |
 | `terminal` | Windows Terminal `settings.json` from `windows/terminal/settings.json`; when they differ it asks before replacing |
-| `bitwarden-store` | [private files](#private-files-bitwarden-store) from the Bitwarden note `Bitwarden-store` (licenses, fonts, git identity); asks for the master password (Enter skips the step), UAC for folders like Program Files |
+| `bitwarden-store` | [private files](#private-files-bitwarden-store) from the Bitwarden note `Bitwarden-store`; asks for the master password (Enter skips the step), UAC for folders like Program Files |
 | `features` | installs/updates the remembered optional features |
 
 Windows Terminal: the repo keeps the whole `settings.json`. Save this machine's version into the repo with
@@ -315,6 +230,106 @@ actions `status` / `install`, like the two above).
   machine settings in `~\.gitconfig.local` or below the include in `~\.gitconfig`.
 - Only profile steps (the old way): `windows\powershell\install-profile.ps1` still works and runs those steps of `install.ps1`.
 - From WSL both clones are visible: `~/.dotfiles` (WSL) and `/mnt/c/Users/<you>/.dotfiles` (Windows) are separate repos.
+
+## What you get
+
+- zsh + Oh My Zsh, Powerlevel10k (lean preset restyled like Oh My Posh "paradox": powerline segments, blue `❯`), zsh-autosuggestions, zsh-syntax-highlighting
+  (long paths collapse like paradox: `~ > 📂 > src > Rules`; middle folders longer than `MY_DIR_MIXED_THRESHOLD` in `.p10k.zsh` become an icon)
+- fzf (Ctrl+R history, **Alt+T** files, Alt+C cd), zoxide, eza, bat, fd, ripgrep
+  (Ctrl+T is "new tab" in Windows Terminal, so files are on Alt+T; see [fzf shortcuts](#fzf-shortcuts))
+- git config with aliases, `pull` = merge
+- WSL: SSH keys served by the Bitwarden desktop agent on Windows (see [SSH keys in WSL](#ssh-keys-in-wsl-bitwarden))
+- Private files from one Bitwarden secure note, on Windows and Ubuntu (see [Private files](#private-files-bitwarden-store))
+- Optional features from a checklist: uv, node (fnm), .NET SDK 10, Docker Engine, Tailscale, Claude Code (see [Optional features](#optional-features))
+- `EDITOR`: `code --wait` inside a VS Code terminal, otherwise `nano`
+
+## SSH keys in WSL (Bitwarden)
+
+In WSL, `ssh` gets its keys from the **Bitwarden desktop agent running on Windows**. No private key is
+copied into the distro, and every use of a key asks Bitwarden on the Windows side.
+
+Bitwarden serves the agent on the Windows named pipe `\\.\pipe\openssh-ssh-agent`, which WSL cannot open
+directly. `~/.config/zsh/wsl.zsh` therefore points `SSH_AUTH_SOCK` at `~/.ssh/bitwarden-agent.sock` and, when
+nothing is listening there yet, starts `socat` to relay that socket through `npiperelay.exe`. It starts once
+per distro boot, from whichever shell comes first; further shells reuse it.
+
+Three one-off steps on each Windows computer:
+
+```powershell
+winget install --id albertony.npiperelay -e
+```
+
+1. The command above (per user, no admin). `albertony.npiperelay` is the maintained fork;
+   `jstarks.npiperelay` in winget is the abandoned original.
+2. Bitwarden Desktop → **Settings** → enable the **SSH agent**.
+3. **Services** → **OpenSSH Authentication Agent** → Startup type **Disabled**. It claims the same named
+   pipe as Bitwarden, and whichever starts first wins. `windows\admin.ps1` does this (step `ssh-agent-service`), and
+   `install.ps1` installs npiperelay (step 1) with the other winget packages.
+
+Then, in a new WSL shell:
+
+```bash
+ssh-add -l                      # must list the keys held in Bitwarden
+```
+
+Empty or an error: unlock Bitwarden, check its SSH agent setting, and confirm `npiperelay.exe` is reachable
+from WSL (`command -v npiperelay.exe`). `install.sh` installs `socat` and reports what is missing.
+
+Git in WSL is unaffected: it uses HTTPS with Git Credential Manager, not the agent. The agent serves `ssh`
+itself and any repository whose remote is SSH. On a native server none of this applies — there SSH keys come
+from the agent you forward over the connection.
+
+## Private files (Bitwarden-store)
+
+Files that must not be in the repo are attachments of **one Bitwarden secure note named `Bitwarden-store`** (attachments
+need Bitwarden Premium). The repo knows only what can be done with a file; the list of files and where they go is the
+attachment **`_manifest.txt`** of the same note. The note's text stays empty.
+
+The install step `bitwarden-store` (Windows `install.ps1`, Ubuntu `install.sh`; again later with `dlab-store-restore`)
+asks for the master password once (Enter skips), reads `_manifest.txt`, and applies every line for this system and computer.
+A file that differs is overwritten; an equal one is left alone (no write, no UAC). Downloads go to
+`~/.dotfiles/local/tmp/` and are removed at the end, also after an error.
+
+`_manifest.txt` (plain text; `#` starts a comment line):
+
+```text
+format: 1
+# attachment        | system  | action | action params          | extra
+example-license.key | windows | copy   | %ProgramFiles%\ExampleApp\license.key
+ExampleFont.ttf     | windows | font
+example.conf        | all     | copy   | ~/.config/example/example.conf | when=missing
+example.zip         | all     | unzip  | ~/example
+id_example          | linux   | copy   | ~/.ssh/id_example      | mode=600
+```
+
+| Column | Values |
+|--------|--------|
+| attachment | exact attachment name on `Bitwarden-store` (one attachment may be used by several lines) |
+| system | `windows`, `linux` (Ubuntu and WSL) or `all` |
+| action | `copy`: to the path in *action params* (`~` on both systems, `%VAR%` on Windows, `$VAR` on Linux; must be absolute; folders are created; UAC for folders like Program Files). `font`: install the `.ttf`/`.otf` for the current user (no params). `unzip`: unpack the `.zip` into the folder in *action params* (files that differ are overwritten, others are left alone) |
+| extra | `host=PC1,PC2` only on these computers; `when=missing` only when the file does not exist yet (for files an app changes itself; default `always`); `mode=600` file permissions on Linux |
+
+A line with a mistake (unknown action or option, relative path, missing attachment) is reported and skipped; the rest
+still runs. The summary shows `ok / updated / skipped / errors`.
+
+Change the store with the `dlab-store-*` commands (Windows `windows\store.ps1`, Ubuntu `ubuntu/store.sh`); no change in
+the repo. Each asks for the master password once and, after a change, updates this machine in the same session:
+
+| Command | What it does |
+|---------|--------------|
+| `dlab-store-list` | attachments, the manifest lines that use them, lines without an attachment, unused attachments |
+| `dlab-store-add <file>` | opens `_manifest.txt` in the editor with a line for the file to complete (target path); after a valid save uploads the file and the manifest |
+| `dlab-store-replace <file>` | new version of the attachment with that file name; the old one stays as `<name>.prev` |
+| `dlab-store-remove <name>` | shows the manifest lines of the attachment, asks, removes both (the file stays as `<name>.prev`) |
+| `dlab-store-manifest-edit` | edits `_manifest.txt` (a template when there is none); a manifest with mistakes is shown again, not saved |
+| `dlab-store-restore` | the install step again: put every file in place |
+
+Every save keeps one step back: `<name>.prev` (also `_manifest.txt.prev`). A replace deletes the old attachment before
+the upload (Bitwarden cannot edit an attachment in place, and two with one name would block it); if the upload fails, the
+old version is `<name>.prev` and running the same command again finishes it. Editor: `$EDITOR` (Windows: else VS Code,
+else Notepad; Ubuntu: else `nano`). `add` and `manifest-edit` create the secure note when it does not exist yet (asks).
+
+`~/.dotfiles/local/` is this machine's folder inside the repo, in `.gitignore`: never commit anything from it.
 
 ## Everyday use
 
@@ -430,7 +445,7 @@ with the same arguments (`uv node`, `--list`, `--update`).
 |-------|-------|-----------|
 | Linked (Stow) | `~/.zshrc`, `~/.config/zsh/*.zsh`, `~/.p10k.zsh`, `~/.gitconfig` | edit in place, changes show up in `git status` here |
 | Copied once from `ubuntu/templates/` | `~/.zshrc.local`, `~/.gitconfig.local`, `~/.agents/config.md`, `~/.claude/settings.json` | created only when missing, never overwritten |
-| From Bitwarden (`bitwarden-store`) | `~/.dotfiles/local/` (e.g. `.gitconfig.user`), `~/.claude/skills/`, files placed by `_manifest.txt` | `local/` is in `.gitignore`; overwritten from Bitwarden when different |
+| From Bitwarden (`bitwarden-store`) | `~/.dotfiles/local/`, files placed by `_manifest.txt` | `local/` is in `.gitignore`; overwritten from Bitwarden when different |
 | Not in the repo | shell history, zsh caches, Oh My Zsh and plugins, fonts, `~/.agents/issues/*`, the rest of `~/.claude`, optional features and their selection (`~/.config/dotfiles/features`) | installed or created by tools |
 
 Rules:
