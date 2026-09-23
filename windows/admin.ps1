@@ -4,8 +4,8 @@
   One-off machine setup that needs administrator rights. Asks for elevation itself (one UAC prompt). Safe to re-run.
 .DESCRIPTION
   Runs windows\admin\NN-*.ps1 in order: Hypervisor Platform, Dev Drive, BitLocker (+ recovery keys to Bitwarden),
-  drive letters, ssh-agent service.
-  Arguments select steps whose name contains them. Opt-in steps (remove-onedrive) run only when named.
+  drive letters, ssh-agent service, preinstalled apps removed, privacy (telemetry, Copilot, Recall, Bing), OneDrive removed.
+  Arguments select steps whose name contains them.
   WSL is an optional feature: dlab-features-select wsl.
   Run it before install.ps1 on a new machine, so W: exists when install.ps1 sets up Windows Terminal.
 .EXAMPLE

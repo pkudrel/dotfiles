@@ -1,0 +1,25 @@
+# Preinstalled apps removed by admin/50-remove-apps.ps1: for every user and from the image (new accounts do not get them).
+# One Appx package name per line (Get-AppxPackage -AllUsers | Select Name). A missing package is fine.
+# Kept on purpose: Store, App Installer (winget), Terminal, Calculator, Photos, Snipping Tool, Notepad, Paint,
+# Weather, Teams. OneDrive is not an Appx package: admin/90-remove-onedrive.ps1.
+Microsoft.BingNews
+Microsoft.GetHelp
+Microsoft.Getstarted                    # Tips
+Microsoft.MicrosoftSolitaireCollection
+Clipchamp.Clipchamp
+Microsoft.WindowsFeedbackHub
+Microsoft.WindowsMaps
+Microsoft.People
+Microsoft.PowerAutomateDesktop
+Microsoft.Todos
+Microsoft.MicrosoftStickyNotes
+Microsoft.GamingApp                     # Xbox
+Microsoft.XboxGamingOverlay             # Game Bar
+Microsoft.XboxGameOverlay
+Microsoft.XboxSpeechToTextOverlay
+Microsoft.Xbox.TCUI
+Microsoft.XboxIdentityProvider          # Xbox sign-in in games from the Store
+Microsoft.YourPhone                     # Phone Link
+Microsoft.OutlookForWindows             # new Outlook
+Microsoft.Copilot
+Microsoft.MicrosoftOfficeHub            # Microsoft 365 (Office) hub

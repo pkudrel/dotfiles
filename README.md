@@ -280,9 +280,12 @@ on their own after a replace.
 | `bitlocker` | checks that `C:` is protected; encrypts `W:` like `C:` with automatic unlock when it is not; asks whether to save the recovery keys of all drives to Bitwarden (bw CLI): a secure note "BitLocker recovery keys - <computer>", one hidden field per drive, never written to a file or shown |
 | `drive-letters` | letters from [`windows/config/drive-letters.txt`](windows/config/drive-letters.txt) (`Q:` → `%USERPROFILE%\!others`); restart |
 | `ssh-agent-service` | Windows "OpenSSH Authentication Agent" off, so Bitwarden's agent gets the pipe |
-| `remove-onedrive` (only when named) | `admin.ps1 onedrive`: uninstall OneDrive, block it by policy, hide it in Explorer |
+| `remove-apps` | preinstalled apps from [`windows/config/remove-apps.txt`](windows/config/remove-apps.txt) (News, Tips, Solitaire, Clipchamp, Xbox + Game Bar, Phone Link, new Outlook, Copilot, Sticky Notes, ...) removed for every user and from the image; they come back only from the Store |
+| `privacy` | registry values from [`windows/config/privacy.txt`](windows/config/privacy.txt): diagnostic data "Required" (the minimum on Home/Pro), no advertising ID, suggestions or silently installed apps, Copilot, Recall and Bing in Start search off; `DiagTrack` service disabled. Some apply after sign-out |
+| `remove-onedrive` | uninstall OneDrive, block it by policy, hide it in Explorer |
 
-Drive letters use `%USERPROFILE%` of the account that runs the elevated step: run `admin.ps1` from your own account.
+Drive letters use `%USERPROFILE%` of the account that runs the elevated step, and `privacy` / `remove-onedrive` set
+that account's HKCU values: run `admin.ps1` from your own account.
 
 ### Windows optional features
 

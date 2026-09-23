@@ -1,0 +1,34 @@
+# Registry values set by admin/60-privacy.ps1 (DWORD; the key is created when missing, a value is written only when
+# it differs). One per line:  <registry path> | <value name> | <number>
+# HKCU is the account that runs admin.ps1 (it elevates the same account). Some apply after sign-out.
+
+# Diagnostic data: "Required" (0 = off works only on Enterprise/Education), no feedback prompts
+HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection | AllowTelemetry                 | 1
+HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection | DoNotShowFeedbackNotifications | 1
+
+# Advertising ID, tailored experiences
+HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo | DisabledByGroupPolicy                          | 1
+HKCU:\Software\Policies\Microsoft\Windows\CloudContent   | DisableTailoredExperiencesWithDiagnosticData | 1
+
+# Suggestions and promoted apps (SilentInstalledApps: removed apps are not installed again)
+HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager | SilentInstalledAppsEnabled       | 0
+HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager | SystemPaneSuggestionsEnabled     | 0
+HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager | SubscribedContent-338388Enabled  | 0
+HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager | SubscribedContent-338389Enabled  | 0
+HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager | SubscribedContent-310093Enabled  | 0
+HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager | SubscribedContent-338387Enabled  | 0
+HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager | RotatingLockScreenOverlayEnabled | 0
+HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced     | Start_IrisRecommendations        | 0
+
+# Copilot
+HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot | TurnOffWindowsCopilot | 1
+HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot | TurnOffWindowsCopilot | 1
+
+# Recall
+HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI | DisableAIDataAnalysis | 1
+HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI | AllowRecallEnablement | 0
+HKCU:\Software\Policies\Microsoft\Windows\WindowsAI | DisableAIDataAnalysis | 1
+
+# Bing results in Start search
+HKCU:\Software\Policies\Microsoft\Windows\Explorer          | DisableSearchBoxSuggestions | 1
+HKCU:\Software\Microsoft\Windows\CurrentVersion\Search      | BingSearchEnabled           | 0

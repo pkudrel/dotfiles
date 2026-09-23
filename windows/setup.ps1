@@ -4,7 +4,7 @@
   First run on a new Windows 11 machine: admin steps, install steps, optional features, restart. Safe to re-run.
 .DESCRIPTION
   1. checks winget
-  2. admin.ps1   (one UAC prompt; Dev Drive W:, Q:, Hypervisor Platform, ssh-agent service)
+  2. admin.ps1   (one UAC prompt; Dev Drive W:, Q:, Hypervisor Platform, ssh-agent service, clean-up)
   3. install.ps1 (packages, profile, git, font, Windows Terminal)
   4. features.ps1 checklist (dotnet, node, sbx, wsl, ...)
   5. what is left to do by hand, and a restart when one is needed

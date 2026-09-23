@@ -58,7 +58,7 @@ Write-Host @'
 
 Next steps:
   - open a new pwsh tab (profile, PATH and font apply there)
-  - admin steps, if not done yet (Dev Drive, Q:, Hypervisor Platform, ssh-agent service):
+  - admin steps, if not done yet (Dev Drive, Q:, Hypervisor Platform, ssh-agent service, clean-up):
       pwsh -File "$HOME\.dotfiles\windows\admin.ps1"
   - optional tools (dotnet, node, uv, claude-code, sbx, sbxup, quickgestures, wsl, ...): dlab-features-select
 '@
