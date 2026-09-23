@@ -1,16 +1,16 @@
-# Bitwarden-store: shared code of the restore step (scripts\85-bitwarden-store.ps1) and the store commands (store.ps1).
-# The secure note "Bitwarden-store" holds the files as attachments; its attachment _manifest.txt says what to do with
+# bitwarden-store: shared code of the restore step (scripts\85-bitwarden-store.ps1) and the store commands (store.ps1).
+# The secure note "bitwarden-store" holds the files as attachments; its attachment _manifest.txt says what to do with
 # each (actions: copy, font, unzip). The repo knows only the actions; which files exist is known only to Bitwarden.
 # Dot-source after lib.ps1. Same rules as ubuntu/scripts/store-lib.sh.
 
-$StoreItemName = 'Bitwarden-store'
+$StoreItemName = 'bitwarden-store'
 $StoreManifest = '_manifest.txt'
 $StoreFormat   = '1'
 $StoreSystem   = 'windows'
 $StoreMaxBytes = 100MB   # Bitwarden's limit per attachment
 
 $StoreTemplate = @'
-# Bitwarden-store manifest (see README.md, "Private files")
+# bitwarden-store manifest (see README.md, "Private files")
 format: 1
 
 # attachment    | system  | action | action params          | extra

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Bitwarden-store: shared code of the restore step (scripts/85-bitwarden-store.sh) and the store commands (store.sh).
-# The secure note "Bitwarden-store" holds the files as attachments; its attachment _manifest.txt says what to do with
+# bitwarden-store: shared code of the restore step (scripts/85-bitwarden-store.sh) and the store commands (store.sh).
+# The secure note "bitwarden-store" holds the files as attachments; its attachment _manifest.txt says what to do with
 # each (actions: copy, font, unzip). The repo knows only the actions; which files exist is known only to Bitwarden.
 # Source after lib.sh. Same rules as windows/scripts/store-lib.ps1.
 # shellcheck disable=SC2034  # STORE_TEMPLATE, STORE_CHANGED and M_* are read by the scripts that source this file
 
-STORE_ITEM_NAME="Bitwarden-store"
+STORE_ITEM_NAME="bitwarden-store"
 STORE_MANIFEST="_manifest.txt"
 STORE_FORMAT="1"
 STORE_SYSTEM="linux"
 STORE_MAX_BYTES=$((100 * 1024 * 1024)) # Bitwarden's limit per attachment
-STORE_TEMPLATE='# Bitwarden-store manifest (see README.md, "Private files")
+STORE_TEMPLATE='# bitwarden-store manifest (see README.md, "Private files")
 format: 1
 
 # attachment    | system  | action | action params          | extra'

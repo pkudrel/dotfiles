@@ -90,24 +90,24 @@ dlab-dotfiles-stow() {
   "$DLAB_DOTFILES_DIR/ubuntu/install.sh" stow
 }
 
-DLAB_COMMANDS[dlab-store-restore]="put the files from Bitwarden-store in place (install.sh bitwarden-store; asks for the master password)"
+DLAB_COMMANDS[dlab-store-restore]="put the files from bitwarden-store in place (install.sh bitwarden-store; asks for the master password)"
 dlab-store-restore() {
   "$DLAB_DOTFILES_DIR/ubuntu/install.sh" bitwarden-store
 }
 
-DLAB_COMMANDS[dlab-store-list]="what is in Bitwarden-store: attachments and the manifest lines that use them"
+DLAB_COMMANDS[dlab-store-list]="what is in bitwarden-store: attachments and the manifest lines that use them"
 dlab-store-list() { "$DLAB_DOTFILES_DIR/ubuntu/store.sh" list }
 
-DLAB_COMMANDS[dlab-store-add]="add a file to Bitwarden-store (dlab-store-add <file>; its manifest line is written in the editor)"
+DLAB_COMMANDS[dlab-store-add]="add a file to bitwarden-store (dlab-store-add <file>; its manifest line is written in the editor)"
 dlab-store-add() { "$DLAB_DOTFILES_DIR/ubuntu/store.sh" add "$@" }
 
-DLAB_COMMANDS[dlab-store-replace]="new version of a file in Bitwarden-store (dlab-store-replace <file>; the old one stays as <name>.prev)"
+DLAB_COMMANDS[dlab-store-replace]="new version of a file in bitwarden-store (dlab-store-replace <file>; the old one stays as <name>.prev)"
 dlab-store-replace() { "$DLAB_DOTFILES_DIR/ubuntu/store.sh" replace "$@" }
 
-DLAB_COMMANDS[dlab-store-remove]="remove a file and its manifest lines from Bitwarden-store (dlab-store-remove <name>; asks first)"
+DLAB_COMMANDS[dlab-store-remove]="remove a file and its manifest lines from bitwarden-store (dlab-store-remove <name>; asks first)"
 dlab-store-remove() { "$DLAB_DOTFILES_DIR/ubuntu/store.sh" remove "$@" }
 
-DLAB_COMMANDS[dlab-store-manifest-edit]="edit _manifest.txt of Bitwarden-store (checked before it is saved)"
+DLAB_COMMANDS[dlab-store-manifest-edit]="edit _manifest.txt of bitwarden-store (checked before it is saved)"
 dlab-store-manifest-edit() { "$DLAB_DOTFILES_DIR/ubuntu/store.sh" manifest-edit }
 
 DLAB_COMMANDS[dlab-features-select]="pick optional features from a checklist (or pass names: dlab-features-select uv node)"

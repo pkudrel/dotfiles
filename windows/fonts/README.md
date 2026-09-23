@@ -23,7 +23,7 @@ The script installs MesloLGS NF for the current user only (no admin needed). Re-
 
 `ConsolasNF.ttf` (Microsoft's Consolas with Nerd Font glyphs, a single regular weight) is **not in the repo**:
 Consolas is licensed with Windows and Office and may not be redistributed. It is an attachment of the Bitwarden note
-`Bitwarden-store`, installed by the Windows install step `bitwarden-store` (`_manifest.txt` line with the action `font`),
+`bitwarden-store`, installed by the Windows install step `bitwarden-store` (`_manifest.txt` line with the action `font`),
 see [Private files](../../README.md#private-files-bitwarden-store). Until then Windows Terminal, which defaults to
 `Consolas NF`, shows its own font; `MesloLGS NF` from the script above works everywhere.
 

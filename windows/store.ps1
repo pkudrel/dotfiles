@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-  Changes the Bitwarden secure note "Bitwarden-store" (the private files that install step bitwarden-store restores).
+  Changes the Bitwarden secure note "bitwarden-store" (the private files that install step bitwarden-store restores).
 .DESCRIPTION
   store.ps1 list                  attachments, the manifest lines that use them, and what does not match
   store.ps1 add <file>            new attachment + its manifest line (the manifest opens in the editor)

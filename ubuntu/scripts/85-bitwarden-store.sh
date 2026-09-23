@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Files from the Bitwarden secure note "Bitwarden-store" (e.g. the git identity), as its attachment _manifest.txt
+# Files from the Bitwarden secure note "bitwarden-store" (e.g. the git identity), as its attachment _manifest.txt
 # says (code: store-lib.sh). One master password prompt (Enter skips); changed files are overwritten.
 # Change the store itself with ubuntu/store.sh (dlab-store-*).
 set -euo pipefail

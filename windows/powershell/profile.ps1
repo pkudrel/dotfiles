@@ -20,6 +20,10 @@
 ## DockerCompletion
 # Install-Module DockerCompletion -Scope CurrentUser -Force
 
+## PSFzf (needs fzf; fd for the file list)
+# Install-Module PSFzf -Scope CurrentUser -Force
+# winget install junegunn.fzf sharkdp.fd -s winget
+
 
 ######
 ###### ENCODING
@@ -204,6 +208,55 @@ if ($host.Name -eq 'ConsoleHost') {
     Set-PSReadLineKeyHandler `
         -Chord "Ctrl+RightArrow" `
         -Function ForwardWord
+}
+
+
+######
+###### FZF (PSFzf, loaded on the first key press)
+######
+
+# Ctrl+R history, Alt+T files, Alt+C cd, like fzf.zsh on Ubuntu. Ctrl+T opens a new tab in Windows Terminal,
+# so the file picker is on Alt+T. With fd the lists include hidden files and skip .git.
+function Import-ProfileFzf {
+    if (Get-Module PSFzf) {
+        return $true
+    }
+
+    if (Get-Command fd -CommandType Application -ErrorAction SilentlyContinue) {
+        $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git'
+        $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
+        $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git'
+    }
+
+    Import-ProfileModule PSFzf
+}
+
+if ($host.Name -eq 'ConsoleHost') {
+
+    # Without PSFzf Ctrl+R stays the plain PSReadLine history search.
+    Set-PSReadLineKeyHandler `
+        -Chord 'Ctrl+r' `
+        -BriefDescription 'FzfHistory' `
+        -ScriptBlock {
+            if (Import-ProfileFzf) { Invoke-FzfPsReadlineHandlerHistory }
+            else { [Microsoft.PowerShell.PSConsoleReadLine]::ReverseSearchHistory() }
+        }
+
+
+    Set-PSReadLineKeyHandler `
+        -Chord 'Alt+t' `
+        -BriefDescription 'FzfFiles' `
+        -ScriptBlock {
+            if (Import-ProfileFzf) { Invoke-FzfPsReadlineHandlerProvider }
+        }
+
+
+    Set-PSReadLineKeyHandler `
+        -Chord 'Alt+c' `
+        -BriefDescription 'FzfCd' `
+        -ScriptBlock {
+            if (Import-ProfileFzf) { Invoke-FzfPsReadlineHandlerSetLocation }
+        }
 }
 
 
@@ -472,7 +525,7 @@ $profileTimings.Add(
 )
 
 $profileTimings.Add(
-    "later: Terminal-Icons (idle), posh-git, DockerCompletion, task (Tab)"
+    "later: Terminal-Icons (idle), posh-git, DockerCompletion, task (Tab), PSFzf (Ctrl+R/Alt+T/Alt+C)"
 )
 
 Write-Host "Profile: $profileLink"

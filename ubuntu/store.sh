@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Changes the Bitwarden secure note "Bitwarden-store" (the private files that install step bitwarden-store restores).
+# Changes the Bitwarden secure note "bitwarden-store" (the private files that install step bitwarden-store restores).
 #
 #   store.sh list              attachments, the manifest lines that use them, and what does not match
 #   store.sh add <file>        new attachment + its manifest line (the manifest opens in the editor)

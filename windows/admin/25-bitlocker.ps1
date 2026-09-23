@@ -53,7 +53,7 @@ else {
 ###### RECOVERY KEYS → BITWARDEN
 ######
 
-# Secure note "BitLocker recovery keys - <computer>", one hidden field per drive; created or updated.
+# Secure note "bitwarden-bitlocker-<computer>" (computer name in lower case), one hidden field per drive; created or updated.
 function Save-RecoveryKeysToBitwarden {
     $volumes = @(Get-BitLockerVolume | Where-Object { Test-RecoveryPassword $_ } | Sort-Object MountPoint)
     if (-not $volumes) {
@@ -66,7 +66,7 @@ function Save-RecoveryKeysToBitwarden {
         return
     }
     try {
-        $name = "BitLocker recovery keys - $env:COMPUTERNAME"
+        $name = "bitwarden-bitlocker-$($env:COMPUTERNAME.ToLower())"
         $fields = foreach ($volume in $volumes) {
             foreach ($protector in $volume.KeyProtector | Where-Object KeyProtectorType -eq 'RecoveryPassword') {
                 [ordered] @{ name = "$($volume.MountPoint) $($protector.KeyProtectorId)"; value = $protector.RecoveryPassword; type = 1 }

@@ -101,22 +101,22 @@ function dlab-features-list { _dlab_run 'features.ps1' '--list' }
 $DlabCommands['dlab-features-update'] = 'install/update the remembered optional features'
 function dlab-features-update { _dlab_run 'features.ps1' '--update' }
 
-$DlabCommands['dlab-store-restore'] = 'put the files from Bitwarden-store in place (install.ps1 bitwarden-store; asks for the master password)'
+$DlabCommands['dlab-store-restore'] = 'put the files from bitwarden-store in place (install.ps1 bitwarden-store; asks for the master password)'
 function dlab-store-restore { _dlab_run 'install.ps1' 'bitwarden-store' }
 
-$DlabCommands['dlab-store-list'] = 'what is in Bitwarden-store: attachments and the manifest lines that use them'
+$DlabCommands['dlab-store-list'] = 'what is in bitwarden-store: attachments and the manifest lines that use them'
 function dlab-store-list { _dlab_run 'store.ps1' @('list') }
 
-$DlabCommands['dlab-store-add'] = 'add a file to Bitwarden-store (dlab-store-add <file>; its manifest line is written in the editor)'
+$DlabCommands['dlab-store-add'] = 'add a file to bitwarden-store (dlab-store-add <file>; its manifest line is written in the editor)'
 function dlab-store-add([string] $File) { _dlab_run 'store.ps1' @('add', $File) }
 
-$DlabCommands['dlab-store-replace'] = 'new version of a file in Bitwarden-store (dlab-store-replace <file>; the old one stays as <name>.prev)'
+$DlabCommands['dlab-store-replace'] = 'new version of a file in bitwarden-store (dlab-store-replace <file>; the old one stays as <name>.prev)'
 function dlab-store-replace([string] $File) { _dlab_run 'store.ps1' @('replace', $File) }
 
-$DlabCommands['dlab-store-remove'] = 'remove a file and its manifest lines from Bitwarden-store (dlab-store-remove <name>; asks first)'
+$DlabCommands['dlab-store-remove'] = 'remove a file and its manifest lines from bitwarden-store (dlab-store-remove <name>; asks first)'
 function dlab-store-remove([string] $Name) { _dlab_run 'store.ps1' @('remove', $Name) }
 
-$DlabCommands['dlab-store-manifest-edit'] = 'edit _manifest.txt of Bitwarden-store (checked before it is saved)'
+$DlabCommands['dlab-store-manifest-edit'] = 'edit _manifest.txt of bitwarden-store (checked before it is saved)'
 function dlab-store-manifest-edit { _dlab_run 'store.ps1' @('manifest-edit') }
 
 $DlabCommands['dlab-terminal-save'] = "copy this machine's Windows Terminal settings.json into the repo (then commit it)"
