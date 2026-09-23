@@ -2,6 +2,12 @@
 
 `ubuntu/` and `windows/` are independent: neither uses files from the other.
 
+Every machine uses the clone in its default folder: `~/.dotfiles` on Ubuntu, `$HOME\.dotfiles` on Windows. The profile,
+the git include and the `dlab-*` commands point there, and `dlab-dotfiles-update` updates it from GitHub. Change the code
+in a separate development clone (e.g. on the `W:` Dev Drive), push it, then run `dlab-dotfiles-update` on the machines.
+Do not run `install.sh` / `install.ps1` from the development clone: the machine would then load its profile and git
+settings from there (fix: run `install.ps1 profile git` from `$HOME\.dotfiles`).
+
 ## Contents
 
 - [New WSL (Ubuntu 26.04)](#new-wsl-ubuntu-2604)
