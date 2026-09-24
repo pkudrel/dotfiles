@@ -11,7 +11,8 @@
   <folder> defaults to C:\!dlab-migrate; a first argument that is a program name is a program, not a folder
   --dry-run (with export / import) shows what would be copied / replaced and changes nothing
   --yes (with import) replaces without asking
-  --zip (with export) also packs the folder into one file next to it, <folder>-<computer>-<date>.zip
+  --zip (with export) also packs the folder into one file inside it, <folder>\<folder>-<computer>-<date>.zip
+        (not next to it: a normal user cannot create files in C:\); earlier .zip files there are not packed
         (copying one file to a USB stick / network drive is much faster than thousands of small ones);
         import, --list: <folder> can be such a .zip (unpacked into a temp folder for the import)
 
@@ -124,14 +125,17 @@ function Get-DotfilesVersion {
     $version
 }
 
-# The whole export folder (every program in it) as <folder>-<computer>-<date>.zip next to it, file by file for the
+# The whole export folder (every program in it) as <folder>\<folder>-<computer>-<date>.zip, file by file for the
 # progress bar. Fastest: most of the time goes to reading thousands of small files, stronger compression gains little.
 function New-ExportZip([string] $Folder) {
     $name = (@((Split-Path $Folder -Leaf), $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmm')) | Where-Object { $_ }) -join '-'
-    $zip = Join-Path (Split-Path $Folder -Parent) "$name.zip"
+    # Inside the folder, not next to it: in C:\ a normal user may create folders but not files.
+    $zip = Join-Path $Folder "$name.zip"
     Write-Step "packing $Folder → $zip"
     $activity = "packing $(Split-Path $zip -Leaf)"
-    $files = [IO.Directory]::GetFiles($Folder, '*', [IO.SearchOption]::AllDirectories)
+    # Zips of earlier exports lie in the folder itself: not packed again.
+    $files = @([IO.Directory]::GetFiles($Folder, '*', [IO.SearchOption]::AllDirectories) |
+        Where-Object { -not ($_ -like '*.zip' -and [IO.Path]::GetDirectoryName($_) -eq $Folder) })
     # Empty folders get their own entry (e.g. an empty profile subfolder), like ZipFile.CreateFromDirectory.
     $emptyDirs = @([IO.Directory]::GetDirectories($Folder, '*', [IO.SearchOption]::AllDirectories) |
         Where-Object { -not [IO.Directory]::EnumerateFileSystemEntries($_).GetEnumerator().MoveNext() })
@@ -261,7 +265,7 @@ function Invoke-Export([object[]] $Catalogue, [string] $Folder, [string[]] $Name
             $state = $states[$name]
             Write-Would "export ${name}: $($state.Profiles -join ', ') from $($state.Source) → $(Join-Path $Folder $name)"
         }
-        if ($Zip) { Write-Would "pack $Folder into $Folder-<computer>-<date>.zip" }
+        if ($Zip) { Write-Would "pack $Folder into $(Join-Path $Folder (Split-Path $Folder -Leaf))-<computer>-<date>.zip" }
         return
     }
 
