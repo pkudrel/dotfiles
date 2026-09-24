@@ -3,11 +3,12 @@
 .SYNOPSIS
   Moves program data (browser profiles) to another machine: export into a folder here, import from it there.
 .DESCRIPTION
-  migrate.ps1 export <folder>                 checklist of the programs with data here (Space toggles, Enter exports)
-  migrate.ps1 export <folder> chrome brave    export these without asking
-  migrate.ps1 import <folder>                 checklist of the programs in the export, then asks before replacing
-  migrate.ps1 import <folder> firefox         import these (still asks, unless --yes)
+  migrate.ps1 export [<folder>]               checklist of the programs with data here (Space toggles, Enter exports)
+  migrate.ps1 export [<folder>] chrome brave  export these without asking
+  migrate.ps1 import [<folder>]               checklist of the programs in the export, then asks before replacing
+  migrate.ps1 import [<folder>] firefox       import these (still asks, unless --yes)
   migrate.ps1 --list [<folder>]               every program and its data here (and in the export <folder>)
+  <folder> defaults to C:\!dlab-migrate; a first argument that is a program name is a program, not a folder
   --dry-run (with export / import) shows what would be copied / replaced and changes nothing
   --yes (with import) replaces without asking
 
@@ -29,10 +30,11 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'scripts\lib.ps1')
 . (Join-Path $PSScriptRoot 'scripts\migrate-lib.ps1')
 
-$ProgramsDir  = Join-Path $PSScriptRoot 'migrate'
-$ManifestName = 'manifest.json'
-$AssumeYes    = $false
-$Usage        = 'usage: migrate.ps1 export <folder> [program ...] | import <folder> [program ...] | --list [<folder>] (see --help)'
+$ProgramsDir   = Join-Path $PSScriptRoot 'migrate'
+$ManifestName  = 'manifest.json'
+$AssumeYes     = $false
+$DefaultFolder = 'C:\!dlab-migrate'
+$Usage         = 'usage: migrate.ps1 export [<folder>] [program ...] | import [<folder>] [program ...] | --list [<folder>] (see --help)'
 
 
 ######
@@ -198,7 +200,7 @@ function Invoke-Export([object[]] $Catalogue, [string] $Folder, [string[]] $Name
         Save-Manifest $Folder $manifest
     }
     if ($failed) { Stop-Install "failed exports: $($failed -join ' ')" }
-    Write-Ok "export done: $Folder (copy it to the other machine, there: dlab-migrate-import <folder>)"
+    Write-Ok "export done: $Folder (copy it to the other machine, there: dlab-migrate-import$(if ($Folder -ne $DefaultFolder) { " <folder>" }))"
 }
 
 function Invoke-Import([object[]] $Catalogue, [string] $Folder, [string[]] $Names) {
@@ -294,7 +296,7 @@ $first = if ($Arguments) { $Arguments[0] } else { '' }
 
 switch -Regex ($first) {
     '^--list$' {
-        Show-Programs $catalogue $(if ($Arguments.Count -gt 1) { Resolve-Folder $Arguments[1] })
+        Show-Programs $catalogue $(if ($Arguments.Count -gt 1) { Resolve-Folder $Arguments[1] } elseif (Test-Path -LiteralPath $DefaultFolder) { $DefaultFolder })
         break
     }
     '^(-h|--help)$' {
@@ -302,9 +304,17 @@ switch -Regex ($first) {
         break
     }
     '^(export|import)$' {
-        if ($Arguments.Count -lt 2) { Stop-Install "usage: migrate.ps1 $first <folder> [program ...]" }
-        $folder = Resolve-Folder $Arguments[1]
-        $names = @(Resolve-ProgramNames $catalogue @($Arguments | Select-Object -Skip 2))
+        # The folder is optional: no second argument, or a program name there, means the default folder.
+        $rest = @($Arguments | Select-Object -Skip 1)
+        if ($rest -and -not (Get-Program $catalogue $rest[0])) {
+            $folder = Resolve-Folder $rest[0]
+            $rest = @($rest | Select-Object -Skip 1)
+        }
+        else {
+            $folder = $DefaultFolder
+        }
+        if ($first -eq 'export') { Write-Step "export into $folder" }
+        $names = @(Resolve-ProgramNames $catalogue $rest)
         if ($first -eq 'export') { Invoke-Export $catalogue $folder $names }
         else { Invoke-Import $catalogue $folder $names }
         break

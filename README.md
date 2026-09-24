@@ -224,13 +224,14 @@ actions `status` / `install`, like the three above).
 ### Windows: moving to another machine (browser profiles)
 
 ```powershell
-dlab-migrate-export D:\move                   # on the old machine: checklist of programs with data (Space, Enter)
-dlab-migrate-export D:\move chrome firefox    # the same without the checklist
-dlab-migrate-import D:\move                   # on the new machine: checklist, shows what is replaced, asks "yes"
-dlab-migrate-list [D:\move]                   # programs, their profiles here (and in the export)
+dlab-migrate-export                    # on the old machine: checklist of programs with data (Space, Enter)
+dlab-migrate-export chrome firefox     # the same without the checklist
+dlab-migrate-import                    # on the new machine: checklist, shows what is replaced, asks "yes"
+dlab-migrate-list                      # programs, their profiles here (and in the export)
+dlab-migrate-export D:\move            # another folder (also for -import and -list)
 ```
 
-`--dry-run` shows what would be copied or replaced; `--yes` imports without asking. Script: `windows\migrate.ps1`.
+The folder is `C:\!dlab-migrate` unless given. `--dry-run` shows what would be copied or replaced; `--yes` imports without asking. Script: `windows\migrate.ps1`.
 
 | Program | Copied | Not copied |
 |---------|--------|------------|
