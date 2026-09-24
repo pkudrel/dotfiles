@@ -210,7 +210,7 @@ dlab-features-list              # state of every feature
 Before the first new tab (no `dlab-*` yet): `~\.dotfiles\windows\features.ps1` with the same arguments.
 Features are installed from winget whenever possible ([`windows/features/winget.txt`](windows/features/winget.txt):
 dotnet, node, uv, claude-code, docker-desktop, sbx, azure-cli, storage-explorer, helm, tailscale, sourcetree,
-editplus, irfanview). Three are scripts because winget does not have them:
+editplus, irfanview, smplayer). Three are scripts because winget does not have them:
 
 | Feature | What gets installed | After install |
 |---------|---------------------|---------------|

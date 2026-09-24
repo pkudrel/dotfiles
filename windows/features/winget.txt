@@ -14,3 +14,4 @@ tailscale        | Tailscale.Tailscale             | Tailscale client           
 sourcetree       | Atlassian.Sourcetree            | Sourcetree                                    |
 editplus         | ES-Computing.EditPlus           | EditPlus                                      |
 irfanview        | IrfanSkiljan.IrfanView          | IrfanView                                     |
+smplayer         | SMPlayer.SMPlayer               | SMPlayer (media player)                       |
