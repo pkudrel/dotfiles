@@ -172,6 +172,7 @@ Safe to re-run: done steps only print `ok`. Replaced files are copied to `~\.dot
 | `profile` | `Documents\PowerShell\profile.ps1` becomes a loader for `windows\powershell\profile.ps1` |
 | `git` | `~\.gitconfig` gets an `[include]` of `windows/git/.gitconfig` at the top (its other settings stay) |
 | `font` | MesloLGS NF for the current user |
+| `appearance` | all animations on (windows minimize / maximize, menus, lists, tooltips, taskbar), Windows dark / apps light, taskbar left with search as an icon; applied at once ([`windows/config/appearance.txt`](windows/config/appearance.txt) + animation switches in the step). Transparency, accent colour and the rest of the taskbar stay as they are |
 | `terminal` | Windows Terminal `settings.json` from `windows/terminal/settings.json`; when they differ it asks before replacing |
 | `bitwarden-store` | [private files](#private-files-bitwarden-store) from the Bitwarden note `bitwarden-store`; asks for the master password (Enter skips the step), UAC for folders like Program Files |
 | `features` | installs/updates the remembered optional features |
