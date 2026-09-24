@@ -118,10 +118,11 @@ function Get-ProfileCountText([string[]] $Profiles) {
 ###### CHROMIUM (Chrome, Brave, Edge, ...)
 ######
 
-# Inside each profile folder: caches (rebuilt by the browser).
+# Inside each profile folder: caches only (rebuilt by the browser). Service Worker and blob_storage are copied:
+# Manifest V3 extensions run as service workers and keep state there.
 $ChromiumSkipDirs = @(
     'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'GrShaderCache',
-    'ShaderCache', 'blob_storage', 'Service Worker\CacheStorage', 'Service Worker\ScriptCache'
+    'ShaderCache'
 )
 # Passwords and cookies (encrypted with this Windows user's key, useless on another machine).
 $ChromiumSkipFiles = @(
@@ -151,14 +152,6 @@ function Get-ChromiumProfiles([string] $UserData) {
     @($names | Where-Object { Test-Path -LiteralPath (Join-Path $UserData $_) -PathType Container } | Sort-Object)
 }
 
-# Local State without os_crypt: the key there is encrypted for this Windows user; the browser makes a new one.
-# System.Text.Json keeps every other value exactly as it was (ConvertFrom-Json would turn dates into DateTime).
-function Copy-ChromiumLocalState([string] $Source, [string] $Destination) {
-    $node = [System.Text.Json.Nodes.JsonNode]::Parse((Get-Content -Raw -LiteralPath $Source))
-    [void] $node.AsObject().Remove('os_crypt')
-    Set-Content -LiteralPath $Destination -Value $node.ToJsonString() -Encoding utf8NoBOM -NoNewline
-}
-
 function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $UserData, [string] $Process) {
     switch ($Action) {
         'status' {
@@ -172,7 +165,9 @@ function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $Use
             if (-not $profiles) { Stop-Install "no profiles in $UserData" }
             Reset-Folder $Folder
             $localState = Join-Path $UserData 'Local State'
-            if (Test-Path -LiteralPath $localState) { Copy-ChromiumLocalState $localState (Join-Path $Folder 'Local State') }
+            # As it is, os_crypt included: without it the browser reset the extensions of every profile after import
+            # (a plain 1:1 copy kept them).
+            if (Test-Path -LiteralPath $localState) { Copy-Item -LiteralPath $localState -Destination (Join-Path $Folder 'Local State') }
             $position = 0
             foreach ($name in $profiles) {
                 $position++

@@ -14,7 +14,8 @@
   --zip (with export) also packs the folder into one file inside it, <folder>\<folder>-<computer>-<date>.zip
         (not next to it: a normal user cannot create files in C:\); earlier .zip files there are not packed
         (copying one file to a USB stick / network drive is much faster than thousands of small ones);
-        import, --list: <folder> can be such a .zip (unpacked into a temp folder for the import)
+        import, --list: <folder> can be such a .zip (unpacked into a temp folder for the import); a folder
+        without manifest.json but with .zip files in it means its newest .zip (copy just the zip to the new machine)
 
   The export folder holds manifest.json (when, from which computer, which profiles) and one folder per program
   in that program's own layout (chrome\, brave\, firefox\), readable without this script. Exporting again into
@@ -86,6 +87,18 @@ function Resolve-Folder([string] $Path) {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 
+# What to import (or list) from: the .zip given, the folder when it holds an export (manifest.json), else the newest
+# .zip in the folder (e.g. only the zip was copied into C:\!dlab-migrate on the new machine).
+function Resolve-ImportSource([string] $Folder) {
+    if ((Test-ZipFile $Folder) -or (Test-Path -LiteralPath (Join-Path $Folder $ManifestName))) { return $Folder }
+    if (-not (Test-Path -LiteralPath $Folder -PathType Container)) { return $Folder }
+    $zips = @(Get-ChildItem -LiteralPath $Folder -Filter '*.zip' -File | Sort-Object LastWriteTime -Descending)
+    if (-not $zips) { return $Folder }
+    Write-Step "no $ManifestName in $Folder, using the newest zip there: $($zips[0].Name)"
+    if ($zips.Count -gt 1) { Write-Warn "other zips there (not used): $(($zips | Select-Object -Skip 1).Name -join ', ')" }
+    $zips[0].FullName
+}
+
 function Test-ZipFile([string] $Path) {
     $Path -like '*.zip' -and (Test-Path -LiteralPath $Path -PathType Leaf)
 }
@@ -126,7 +139,8 @@ function Get-DotfilesVersion {
 }
 
 # The whole export folder (every program in it) as <folder>\<folder>-<computer>-<date>.zip, file by file for the
-# progress bar. Fastest: most of the time goes to reading thousands of small files, stronger compression gains little.
+# progress bar. No compression: profiles shrank only to 83% with Fastest (LevelDB, images and extension packages are
+# compressed already), at 5x the packing time (40 000 files, 4 GB: 36 s vs 7 s); one file instead of thousands is the gain.
 function New-ExportZip([string] $Folder) {
     $name = (@((Split-Path $Folder -Leaf), $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmm')) | Where-Object { $_ }) -join '-'
     # Inside the folder, not next to it: in C:\ a normal user may create folders but not files.
@@ -144,7 +158,7 @@ function New-ExportZip([string] $Folder) {
         $done = 0
         foreach ($file in $files) {
             $entryName = [IO.Path]::GetRelativePath($Folder, $file) -replace '\\', '/'
-            [void] [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file, $entryName, [IO.Compression.CompressionLevel]::Fastest)
+            [void] [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file, $entryName, [IO.Compression.CompressionLevel]::NoCompression)
             $done++
             Show-Progress $activity $done $files.Count
         }
@@ -401,7 +415,8 @@ $first = if ($Arguments) { $Arguments[0] } else { '' }
 
 switch -Regex ($first) {
     '^--list$' {
-        Show-Programs $catalogue $(if ($Arguments.Count -gt 1) { Resolve-Folder $Arguments[1] } elseif (Test-Path -LiteralPath $DefaultFolder) { $DefaultFolder })
+        $folder = if ($Arguments.Count -gt 1) { Resolve-Folder $Arguments[1] } elseif (Test-Path -LiteralPath $DefaultFolder) { $DefaultFolder }
+        Show-Programs $catalogue $(if ($folder) { Resolve-ImportSource $folder })
         break
     }
     '^(-h|--help)$' {
@@ -424,13 +439,16 @@ switch -Regex ($first) {
             if (Test-ZipFile $folder) { Stop-Install "export goes into a folder, not into $folder (--zip packs the folder afterwards)" }
             Invoke-Export $catalogue $folder $names
         }
-        elseif (Test-ZipFile $folder) {
-            $temp = Expand-ExportZip $folder
-            try { Invoke-Import $catalogue $temp $names }
-            finally { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
-        }
         else {
-            Invoke-Import $catalogue $folder $names
+            $source = Resolve-ImportSource $folder
+            if (Test-ZipFile $source) {
+                $temp = Expand-ExportZip $source
+                try { Invoke-Import $catalogue $temp $names }
+                finally { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
+            }
+            else {
+                Invoke-Import $catalogue $source $names
+            }
         }
         break
     }
