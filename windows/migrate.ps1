@@ -11,6 +11,9 @@
   <folder> defaults to C:\!dlab-migrate; a first argument that is a program name is a program, not a folder
   --dry-run (with export / import) shows what would be copied / replaced and changes nothing
   --yes (with import) replaces without asking
+  --zip (with export) also packs the folder into one file next to it, <folder>-<computer>-<date>.zip
+        (copying one file to a USB stick / network drive is much faster than thousands of small ones);
+        import, --list: <folder> can be such a .zip (unpacked into a temp folder for the import)
 
   The export folder holds manifest.json (when, from which computer, which profiles) and one folder per program
   in that program's own layout (chrome\, brave\, firefox\), readable without this script. Exporting again into
@@ -33,8 +36,9 @@ $ErrorActionPreference = 'Stop'
 $ProgramsDir   = Join-Path $PSScriptRoot 'migrate'
 $ManifestName  = 'manifest.json'
 $AssumeYes     = $false
+$Zip           = $false
 $DefaultFolder = 'C:\!dlab-migrate'
-$Usage         = 'usage: migrate.ps1 export [<folder>] [program ...] | import [<folder>] [program ...] | --list [<folder>] (see --help)'
+$Usage         = 'usage: migrate.ps1 export [<folder>] [program ...] [--zip] | import [<folder> | <file>.zip] [program ...] | --list [<folder> | <file>.zip] (see --help)'
 
 
 ######
@@ -81,10 +85,30 @@ function Resolve-Folder([string] $Path) {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 
+function Test-ZipFile([string] $Path) {
+    $Path -like '*.zip' -and (Test-Path -LiteralPath $Path -PathType Leaf)
+}
+
+# The manifest of an export folder, or of an export .zip (read without unpacking).
 function Read-Manifest([string] $Folder) {
-    $path = Join-Path $Folder $ManifestName
-    if (-not (Test-Path -LiteralPath $path)) { return $null }
-    $manifest = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json -AsHashtable
+    if (Test-ZipFile $Folder) {
+        $archive = [IO.Compression.ZipFile]::OpenRead($Folder)
+        try {
+            $entry = $archive.GetEntry($ManifestName)
+            if (-not $entry) { return $null }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $json = $reader.ReadToEnd() } finally { $reader.Dispose() }
+        }
+        finally {
+            $archive.Dispose()
+        }
+    }
+    else {
+        $path = Join-Path $Folder $ManifestName
+        if (-not (Test-Path -LiteralPath $path)) { return $null }
+        $json = Get-Content -Raw -LiteralPath $path
+    }
+    $manifest = $json | ConvertFrom-Json -AsHashtable
     if (-not $manifest.programs) { $manifest.programs = [ordered] @{} }
     $manifest
 }
@@ -98,6 +122,26 @@ function Get-DotfilesVersion {
     $version = git -C (Split-Path $WindowsDir -Parent) describe --tags --always 2>$null
     if ($LASTEXITCODE) { return $null }
     $version
+}
+
+# The whole export folder (every program in it) as <folder>-<computer>-<date>.zip next to it.
+# Fastest: most of the time goes to reading thousands of small files, stronger compression gains little.
+function New-ExportZip([string] $Folder) {
+    $name = (@((Split-Path $Folder -Leaf), $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmm')) | Where-Object { $_ }) -join '-'
+    $zip = Join-Path (Split-Path $Folder -Parent) "$name.zip"
+    Write-Step "packing $Folder → $zip"
+    if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+    [IO.Compression.ZipFile]::CreateFromDirectory($Folder, $zip, [IO.Compression.CompressionLevel]::Fastest, $false)
+    Write-Ok "$zip ($([Math]::Round((Get-Item -LiteralPath $zip).Length / 1MB, 1)) MB)"
+    $zip
+}
+
+# Unpacks an export .zip into a new temp folder and returns its path (the caller removes it).
+function Expand-ExportZip([string] $Zip) {
+    $temp = Join-Path ([IO.Path]::GetTempPath()) "dlab-migrate-$([guid]::NewGuid())"
+    Write-Step "unpacking $Zip → $temp"
+    [IO.Compression.ZipFile]::ExtractToDirectory($Zip, $temp)
+    $temp
 }
 
 # "2 profiles, 2026-09-24 10:15 from DESKTOP-1" for a manifest entry.
@@ -167,6 +211,7 @@ function Invoke-Export([object[]] $Catalogue, [string] $Folder, [string[]] $Name
             $state = $states[$name]
             Write-Would "export ${name}: $($state.Profiles -join ', ') from $($state.Source) → $(Join-Path $Folder $name)"
         }
+        if ($Zip) { Write-Would "pack $Folder into $Folder-<computer>-<date>.zip" }
         return
     }
 
@@ -200,6 +245,11 @@ function Invoke-Export([object[]] $Catalogue, [string] $Folder, [string[]] $Name
         Save-Manifest $Folder $manifest
     }
     if ($failed) { Stop-Install "failed exports: $($failed -join ' ')" }
+    if ($Zip) {
+        $zipFile = New-ExportZip $Folder
+        Write-Ok "export done: copy $zipFile to the other machine, there: dlab-migrate-import <that .zip>"
+        return
+    }
     Write-Ok "export done: $Folder (copy it to the other machine, there: dlab-migrate-import$(if ($Folder -ne $DefaultFolder) { " <folder>" }))"
 }
 
@@ -289,7 +339,8 @@ if ($Arguments -contains '--dry-run') {
     Write-Warn 'dry run: nothing is changed'
 }
 if ($Arguments -contains '--yes') { $AssumeYes = $true }
-$Arguments = @($Arguments | Where-Object { $_ -notin '--dry-run', '--yes' })
+if ($Arguments -contains '--zip') { $Zip = $true }
+$Arguments = @($Arguments | Where-Object { $_ -notin '--dry-run', '--yes', '--zip' })
 
 $catalogue = @(Get-Programs)
 $first = if ($Arguments) { $Arguments[0] } else { '' }
@@ -315,8 +366,18 @@ switch -Regex ($first) {
         }
         if ($first -eq 'export') { Write-Step "export into $folder" }
         $names = @(Resolve-ProgramNames $catalogue $rest)
-        if ($first -eq 'export') { Invoke-Export $catalogue $folder $names }
-        else { Invoke-Import $catalogue $folder $names }
+        if ($first -eq 'export') {
+            if (Test-ZipFile $folder) { Stop-Install "export goes into a folder, not into $folder (--zip packs the folder afterwards)" }
+            Invoke-Export $catalogue $folder $names
+        }
+        elseif (Test-ZipFile $folder) {
+            $temp = Expand-ExportZip $folder
+            try { Invoke-Import $catalogue $temp $names }
+            finally { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        else {
+            Invoke-Import $catalogue $folder $names
+        }
         break
     }
     default {
