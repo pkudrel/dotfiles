@@ -241,7 +241,7 @@ in `C:\`); zips of earlier exports there are not packed again. Import unpacks th
 
 | Program | Copied | Not copied |
 |---------|--------|------------|
-| `chrome`, `brave` | every profile (`Default`, `Profile N`) and `Local State` from `User Data`: bookmarks, extensions, settings, history; Brave: the Brave Sync code of each profile in the chain | caches (`Cache`, `Code Cache`, `GPUCache`, shader caches), saved passwords (`Login Data`), cookies |
+| `chrome`, `brave` | every profile (`Default`, `Profile N`) and `Local State` from `User Data`: bookmarks, extensions, settings, history | caches (`Cache`, `Code Cache`, `GPUCache`, shader caches), saved passwords (`Login Data`), cookies |
 | `firefox` | every profile in `profiles.ini` (from `%APPDATA%\Mozilla\Firefox`), `profiles.ini`, `installs.ini` | caches, `logins.json` + `key4.db` (passwords), `cookies.sqlite`, Firefox account sign-in |
 
 - Close the browsers first (also in the tray): a running one stops the export / import.
@@ -251,12 +251,7 @@ in `C:\`); zips of earlier exports there are not packed again. Import unpacks th
 - The export folder is readable without the script: `manifest.json` (when, from which computer, which profiles)
   and one folder per program in its own layout (`chrome\Default\...`, `firefox\Profiles\...`). Copy it to the new
   machine yourself (USB, network drive). Exporting again into it replaces only the programs exported that time.
-- **Brave Sync**: its code is stored encrypted for the old Windows user, so Brave leaves the chain after an import.
-  The export reads the code (`brave\sync-codes.json`) and the import then opens Brave on each profile's
-  `brave://settings/braveSync/setup` with the code in the clipboard: *I have a Sync Code* → Ctrl+V → Confirm, Enter
-  in the terminal (joining has no command line or policy). **The code gives full access to the sync chain, passwords
-  included: keep the export folder / zip private.**
-- New program: a script `windows/migrate/NN-name.ps1` (line 1 = description, actions `status` / `export` / `import` / `after-import`;
+- New program: a script `windows/migrate/NN-name.ps1` (line 1 = description, actions `status` / `export` / `import`;
   helpers in `windows/scripts/migrate-lib.ps1`, e.g. another Chromium browser is one line like `20-brave.ps1`).
 
 ### Windows: PowerShell profile and commands
