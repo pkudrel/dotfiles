@@ -1,6 +1,1 @@
-template: sbx-claude-dotnet10-python-uv
-agent: claude
-clone: false
-build:
-  name: sbx-claude-dotnet10-python-uv
-  release: deneblab/sbx-templates@0.2.7   
+template: dotnet10-python-uv
