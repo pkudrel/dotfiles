@@ -43,7 +43,7 @@
         },
         {
           "properties": {
-            "branch_icon": "",
+            "branch_icon": "\ue0a0 ",
             "cache_duration": "none",
             "fetch_stash_count": true,
             "fetch_status": true
