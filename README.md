@@ -243,6 +243,7 @@ little, the folder stays as it is). Import unpacks the .zip into a temp folder f
 | `firefox` | every profile in `profiles.ini` (from `%APPDATA%\Mozilla\Firefox`), `profiles.ini`, `installs.ini` | caches, `logins.json` + `key4.db` (passwords), `cookies.sqlite`, Firefox account sign-in |
 
 - Close the browsers first (also in the tray): a running one stops the export / import.
+- A progress bar shows the files copied, packed or unpacked (count, not size: profiles are mostly small files).
 - **Import replaces everything the program has on the new machine**: profiles that exist only there, their saved
   passwords and cookies are removed. No backup. Sign in to websites again afterwards.
 - The export folder is readable without the script: `manifest.json` (when, from which computer, which profiles)

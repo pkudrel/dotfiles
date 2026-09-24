@@ -124,23 +124,73 @@ function Get-DotfilesVersion {
     $version
 }
 
-# The whole export folder (every program in it) as <folder>-<computer>-<date>.zip next to it.
-# Fastest: most of the time goes to reading thousands of small files, stronger compression gains little.
+# The whole export folder (every program in it) as <folder>-<computer>-<date>.zip next to it, file by file for the
+# progress bar. Fastest: most of the time goes to reading thousands of small files, stronger compression gains little.
 function New-ExportZip([string] $Folder) {
     $name = (@((Split-Path $Folder -Leaf), $env:COMPUTERNAME, (Get-Date -Format 'yyyyMMdd-HHmm')) | Where-Object { $_ }) -join '-'
     $zip = Join-Path (Split-Path $Folder -Parent) "$name.zip"
     Write-Step "packing $Folder → $zip"
-    if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-    [IO.Compression.ZipFile]::CreateFromDirectory($Folder, $zip, [IO.Compression.CompressionLevel]::Fastest, $false)
-    Write-Ok "$zip ($([Math]::Round((Get-Item -LiteralPath $zip).Length / 1MB, 1)) MB)"
+    $activity = "packing $(Split-Path $zip -Leaf)"
+    $files = [IO.Directory]::GetFiles($Folder, '*', [IO.SearchOption]::AllDirectories)
+    # Empty folders get their own entry (e.g. an empty profile subfolder), like ZipFile.CreateFromDirectory.
+    $emptyDirs = @([IO.Directory]::GetDirectories($Folder, '*', [IO.SearchOption]::AllDirectories) |
+        Where-Object { -not [IO.Directory]::EnumerateFileSystemEntries($_).GetEnumerator().MoveNext() })
+    $archive = [IO.Compression.ZipFile]::Open($zip, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $done = 0
+        foreach ($file in $files) {
+            $entryName = [IO.Path]::GetRelativePath($Folder, $file) -replace '\\', '/'
+            [void] [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file, $entryName, [IO.Compression.CompressionLevel]::Fastest)
+            $done++
+            Show-Progress $activity $done $files.Count
+        }
+        foreach ($dir in $emptyDirs) {
+            [void] $archive.CreateEntry(([IO.Path]::GetRelativePath($Folder, $dir) -replace '\\', '/') + '/')
+        }
+    }
+    catch {
+        $archive.Dispose()
+        $archive = $null
+        Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
+        throw
+    }
+    finally {
+        if ($archive) { $archive.Dispose() }
+        Complete-Progress $activity
+    }
+    Write-Ok "$zip ($('{0:N0}' -f $files.Count) files, $([Math]::Round((Get-Item -LiteralPath $zip).Length / 1MB, 1)) MB)"
     $zip
 }
 
-# Unpacks an export .zip into a new temp folder and returns its path (the caller removes it).
+# Unpacks an export .zip into a new temp folder, file by file for the progress bar; returns the folder (the caller
+# removes it). Entries pointing outside the folder (../) are refused.
 function Expand-ExportZip([string] $Zip) {
     $temp = Join-Path ([IO.Path]::GetTempPath()) "dlab-migrate-$([guid]::NewGuid())"
     Write-Step "unpacking $Zip → $temp"
-    [IO.Compression.ZipFile]::ExtractToDirectory($Zip, $temp)
+    $activity = "unpacking $(Split-Path $Zip -Leaf)"
+    $root = [IO.Path]::GetFullPath($temp) + [IO.Path]::DirectorySeparatorChar
+    $archive = [IO.Compression.ZipFile]::OpenRead($Zip)
+    try {
+        $entries = $archive.Entries
+        $done = 0
+        foreach ($entry in $entries) {
+            $target = [IO.Path]::GetFullPath((Join-Path $temp $entry.FullName))
+            if (-not $target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { Stop-Install "$Zip has an entry outside the folder: $($entry.FullName)" }
+            if ($entry.FullName.EndsWith('/')) {
+                [void] [IO.Directory]::CreateDirectory($target)
+            }
+            else {
+                [void] [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
+                [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true)
+            }
+            $done++
+            Show-Progress $activity $done $entries.Count
+        }
+    }
+    finally {
+        $archive.Dispose()
+        Complete-Progress $activity
+    }
     $temp
 }
 

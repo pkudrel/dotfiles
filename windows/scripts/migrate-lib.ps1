@@ -12,10 +12,60 @@
 ###### COMMON
 ######
 
-# Copy a folder tree with robocopy. -Mirror also removes what is in $Destination but not in $Source.
-# $SkipDirs: folder names (anywhere), or paths relative to $Source when they contain "\". $SkipFiles: file names / masks.
-function Copy-Tree([string] $Source, [string] $Destination, [string[]] $SkipDirs = @(), [string[]] $SkipFiles = @(), [switch] $Mirror) {
-    $robocopyArgs = @($Source, $Destination, $(if ($Mirror) { '/MIR' } else { '/E' }), '/R:1', '/W:1', '/XJ', '/NFL', '/NDL', '/NP', '/NJH', '/NJS')
+# Progress bar (Write-Progress) for thousands of small files: redrawn at most every 200 ms, drawing it for
+# every file would slow the copy down. Percent from the file count, not bytes (profiles are mostly small files).
+$ProgressClock = [Diagnostics.Stopwatch]::StartNew()
+
+function Show-Progress([string] $Activity, [int] $Done, [int] $Total) {
+    if ($Done -lt $Total -and $ProgressClock.ElapsedMilliseconds -lt 200) { return }
+    $ProgressClock.Restart()
+    $shown = [Math]::Min($Done, $Total)
+    $percent = if ($Total) { [int] (100 * $shown / $Total) } else { 100 }
+    Write-Progress -Activity $Activity -Status ('{0:N0} / {1:N0} files ({2}%)' -f $shown, $Total, $percent) -PercentComplete $percent
+}
+
+function Complete-Progress([string] $Activity) {
+    Write-Progress -Activity $Activity -Completed
+}
+
+function Test-AnyMask([string] $Name, [string[]] $Masks) {
+    foreach ($mask in $Masks) { if ($Name -like $mask) { return $true } }
+    $false
+}
+
+# Files Copy-Tree will copy (same exclusions, junctions skipped like robocopy /XJ): the total of the progress bar.
+function Get-TreeFileCount([string] $Source, [string[]] $SkipDirs = @(), [string[]] $SkipFiles = @()) {
+    $skipNames = @($SkipDirs | Where-Object { -not $_.Contains('\') })
+    $skipPaths = @($SkipDirs | Where-Object { $_.Contains('\') } | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $Source $_)) })
+    $count = 0
+    $pending = [Collections.Generic.Stack[IO.DirectoryInfo]]::new()
+    $pending.Push([IO.DirectoryInfo]::new($Source))
+    while ($pending.Count) {
+        $dir = $pending.Pop()
+        try {
+            foreach ($file in $dir.EnumerateFiles()) {
+                if (-not (Test-AnyMask $file.Name $SkipFiles)) { $count++ }
+            }
+            foreach ($sub in $dir.EnumerateDirectories()) {
+                if ($sub.Attributes -band [IO.FileAttributes]::ReparsePoint) { continue }
+                if ((Test-AnyMask $sub.Name $skipNames) -or $sub.FullName -in $skipPaths) { continue }
+                $pending.Push($sub)
+            }
+        }
+        catch [UnauthorizedAccessException], [IO.IOException] {
+            # robocopy reports these folders itself.
+        }
+    }
+    $count
+}
+
+# Copy a folder tree with robocopy, with a progress bar ($Activity). -Mirror also removes what is in $Destination
+# but not in $Source. $SkipDirs: folder names (anywhere), or paths relative to $Source when they contain "\".
+# $SkipFiles: file names / masks.
+function Copy-Tree([string] $Source, [string] $Destination, [string[]] $SkipDirs = @(), [string[]] $SkipFiles = @(), [switch] $Mirror, [string] $Activity = 'copy') {
+    $total = Get-TreeFileCount $Source $SkipDirs $SkipFiles
+    # Without /NFL robocopy prints a line per copied file: counted for the progress bar.
+    $robocopyArgs = @($Source, $Destination, $(if ($Mirror) { '/MIR' } else { '/E' }), '/R:1', '/W:1', '/XJ', '/NDL', '/NP', '/NJH', '/NJS')
     if ($SkipDirs) {
         $robocopyArgs += '/XD'
         $robocopyArgs += $SkipDirs | ForEach-Object { if ($_.Contains('\')) { Join-Path $Source $_ } else { $_ } }
@@ -24,11 +74,21 @@ function Copy-Tree([string] $Source, [string] $Destination, [string[]] $SkipDirs
         $robocopyArgs += '/XF'
         $robocopyArgs += $SkipFiles
     }
-    $output = robocopy @robocopyArgs
+    $done = 0
+    $tail = [Collections.Generic.Queue[string]]::new()  # last lines, shown when robocopy fails
+    robocopy @robocopyArgs | ForEach-Object {
+        if (-not $_.Trim()) { return }
+        $tail.Enqueue($_)
+        if ($tail.Count -gt 20) { [void] $tail.Dequeue() }
+        $done++
+        Show-Progress $Activity $done $total
+    }
+    $exitCode = $LASTEXITCODE
+    Complete-Progress $Activity
     # robocopy: 0-7 success (files copied / extra files / mismatches), 8 and more failure.
-    if ($LASTEXITCODE -ge 8) {
-        $output | Where-Object { $_ } | Select-Object -Last 20 | Write-Host
-        Stop-Install "copy $Source → $Destination failed (robocopy exit code $LASTEXITCODE)"
+    if ($exitCode -ge 8) {
+        $tail | Write-Host
+        Stop-Install "copy $Source → $Destination failed (robocopy exit code $exitCode)"
     }
     $global:LASTEXITCODE = 0
 }
@@ -113,8 +173,12 @@ function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $Use
             Reset-Folder $Folder
             $localState = Join-Path $UserData 'Local State'
             if (Test-Path -LiteralPath $localState) { Copy-ChromiumLocalState $localState (Join-Path $Folder 'Local State') }
+            $position = 0
             foreach ($name in $profiles) {
-                Copy-Tree (Join-Path $UserData $name) (Join-Path $Folder $name) -SkipDirs $ChromiumSkipDirs -SkipFiles $ChromiumSkipFiles
+                $position++
+                $activity = "$(Split-Path $Folder -Leaf): $name ($position/$($profiles.Count))"
+                Write-Host "    $activity" -ForegroundColor DarkGray
+                Copy-Tree (Join-Path $UserData $name) (Join-Path $Folder $name) -SkipDirs $ChromiumSkipDirs -SkipFiles $ChromiumSkipFiles -Activity $activity
             }
             return $profiles
         }
@@ -122,7 +186,7 @@ function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $Use
             if (-not (Get-ChromiumProfiles $Folder)) { Stop-Install "no profiles in $Folder" }
             Assert-NotRunning $Process
             # The whole User Data folder becomes the export: other profiles, passwords, cookies and caches here are removed.
-            Copy-Tree $Folder $UserData -Mirror
+            Copy-Tree $Folder $UserData -Mirror -Activity "$(Split-Path $Folder -Leaf): import"
         }
         default { Stop-Install "unknown action: $Action (status | export <folder> | import <folder>)" }
     }
@@ -183,11 +247,15 @@ function Invoke-FirefoxAction([string] $Action, [string] $Folder, [string] $Root
                 $path = Join-Path $Root $file
                 if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination (Join-Path $Folder $file) }
             }
+            $position = 0
             $exported = foreach ($firefoxProfile in $all) {
+                $position++
                 $source = Join-Path $Root $firefoxProfile.Path
                 if (-not $firefoxProfile.Relative) { Write-Warn "profile $($firefoxProfile.Name) is outside $Root ($($firefoxProfile.Path)), skipped"; continue }
                 if (-not (Test-Path -LiteralPath $source)) { Write-Warn "profile $($firefoxProfile.Name): $source not found, skipped"; continue }
-                Copy-Tree $source (Join-Path $Folder $firefoxProfile.Path) -SkipDirs $FirefoxSkipDirs -SkipFiles $FirefoxSkipFiles
+                $activity = "$(Split-Path $Folder -Leaf): $($firefoxProfile.Name) ($position/$($all.Count))"
+                Write-Host "    $activity" -ForegroundColor DarkGray
+                Copy-Tree $source (Join-Path $Folder $firefoxProfile.Path) -SkipDirs $FirefoxSkipDirs -SkipFiles $FirefoxSkipFiles -Activity $activity
                 $firefoxProfile.Name
             }
             return @($exported)
@@ -196,7 +264,7 @@ function Invoke-FirefoxAction([string] $Action, [string] $Folder, [string] $Root
             if (-not (Test-Path -LiteralPath (Join-Path $Folder 'profiles.ini'))) { Stop-Install "no profiles.ini in $Folder" }
             Assert-NotRunning $Process
             # The whole Firefox folder becomes the export: other profiles, passwords and cookies here are removed.
-            Copy-Tree $Folder $Root -Mirror
+            Copy-Tree $Folder $Root -Mirror -Activity "$(Split-Path $Folder -Leaf): import"
         }
         default { Stop-Install "unknown action: $Action (status | export <folder> | import <folder>)" }
     }
