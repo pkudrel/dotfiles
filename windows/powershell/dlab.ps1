@@ -101,6 +101,15 @@ function dlab-features-list { _dlab_run 'features.ps1' '--list' }
 $DlabCommands['dlab-features-update'] = 'install/update the remembered optional features'
 function dlab-features-update { _dlab_run 'features.ps1' '--update' }
 
+$DlabCommands['dlab-migrate-export'] = 'export browser profiles into a folder (dlab-migrate-export <folder> [chrome brave firefox]; checklist without names)'
+function dlab-migrate-export { _dlab_run 'migrate.ps1' (@('export') + $args) }
+
+$DlabCommands['dlab-migrate-import'] = 'replace the browser profiles here with an export (dlab-migrate-import <folder> [names]; asks first)'
+function dlab-migrate-import { _dlab_run 'migrate.ps1' (@('import') + $args) }
+
+$DlabCommands['dlab-migrate-list'] = 'programs that dlab-migrate-export knows and their data here (dlab-migrate-list [<folder>] compares with an export)'
+function dlab-migrate-list { _dlab_run 'migrate.ps1' (@('--list') + $args) }
+
 $DlabCommands['dlab-store-restore'] = 'put the files from bitwarden-store in place (install.ps1 bitwarden-store; asks for the master password)'
 function dlab-store-restore { _dlab_run 'install.ps1' 'bitwarden-store' }
 

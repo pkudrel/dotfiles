@@ -169,7 +169,7 @@ function Install-Features([object[]] $Catalogue, [string[]] $Names) {
     Write-Ok "features done: $($Names -join ' ')"
 }
 
-# Checklist driven by keys, redrawn in place. Pre-selected: installed features and remembered ones that are not installed yet.
+# Checklist of all features. Pre-selected: installed features and remembered ones that are not installed yet.
 # Features not available on this machine are shown as [-] and skipped by the cursor.
 function Select-Features([object[]] $Catalogue) {
     if ([Console]::IsInputRedirected) { Stop-Install 'no terminal: pass feature names or --update' }
@@ -177,65 +177,24 @@ function Select-Features([object[]] $Catalogue) {
     $rows = foreach ($feature in $Catalogue) {
         $state = Get-FeatureState $feature
         [pscustomobject] @{
-            Feature  = $feature
-            State    = $state
-            Selected = ($state.Code -eq 0) -or ($state.Code -eq 1 -and $feature.Name -in $remembered)
+            Name      = $feature.Name
+            State     = $state.Text
+            Label     = $feature.Label
+            Available = $state.Code -ne 2
+            Selected  = ($state.Code -eq 0) -or ($state.Code -eq 1 -and $feature.Name -in $remembered)
         }
     }
-    $available = @($rows | Where-Object { $_.State.Code -ne 2 })
-    if (-not $available) {
+    if (-not ($rows | Where-Object Available)) {
         Write-Warn 'no feature can be installed on this machine'
         return @()
     }
-    $position = 0  # index into $available
-
-    Write-Host ''
-    Write-Host '  Up/Down move, Space toggle, a all/none, Enter install selected, Esc cancel' -ForegroundColor DarkGray
-    Write-Host ''
-    $drawn = $false
-    $cursorVisible = [Console]::CursorVisible
-    [Console]::CursorVisible = $false
-    try {
-        while ($true) {
-            # Back to the first row (ANSI cursor up) and draw over the previous frame.
-            if ($drawn) { Write-Host -NoNewline "`e[$($rows.Count)A" }
-            $drawn = $true
-            $width = [Math]::Max([Console]::WindowWidth - 1, 20)
-            foreach ($row in $rows) {
-                $current = [object]::ReferenceEquals($row, $available[$position])
-                $box = if ($row.State.Code -eq 2) { '[-]' } elseif ($row.Selected) { '[x]' } else { '[ ]' }
-                $line = '{0} {1} {2,-17} {3,-16} {4}' -f $(if ($current) { '>' } else { ' ' }), $box, $row.Feature.Name, $row.State.Text, $row.Feature.Label
-                # Cut to the window width: a wrapped line would throw off the cursor-up count.
-                if ($line.Length -gt $width) { $line = $line.Substring(0, $width) }
-                $color = if ($row.State.Code -eq 2) { @{ ForegroundColor = 'DarkGray' } } elseif ($current) { @{ ForegroundColor = 'Cyan' } } else { @{} }
-                Write-Host -NoNewline "`e[2K"
-                Write-Host $line @color
-            }
-
-            $key = [Console]::ReadKey($true)
-            $char = [char]::ToLowerInvariant($key.KeyChar)
-            if ($key.Key -eq 'Enter') { break }
-            if ($key.Key -eq 'Escape' -or $char -eq 'q') {
-                # Not an error: a plain message and exit 0 (setup.ps1 carries on with the next phase).
-                Write-Warn 'features: cancelled, nothing changed (pick them later: dlab-features-select)'
-                exit 0
-            }
-            if ($key.Key -eq 'UpArrow' -or $char -eq 'k') { $position = ($position - 1 + $available.Count) % $available.Count }
-            elseif ($key.Key -eq 'DownArrow' -or $char -eq 'j') { $position = ($position + 1) % $available.Count }
-            elseif ($key.Key -eq 'Home') { $position = 0 }
-            elseif ($key.Key -eq 'End') { $position = $available.Count - 1 }
-            elseif ($key.Key -eq 'Spacebar') { $available[$position].Selected = -not $available[$position].Selected }
-            elseif ($char -eq 'a') {
-                $all = -not ($available | Where-Object { -not $_.Selected })
-                foreach ($row in $available) { $row.Selected = -not $all }
-            }
-        }
+    $choice = Select-FromChecklist $rows 'install'
+    if ($choice.Cancelled) {
+        # Not an error: a plain message and exit 0 (setup.ps1 carries on with the next phase).
+        Write-Warn 'features: cancelled, nothing changed (pick them later: dlab-features-select)'
+        exit 0
     }
-    finally {
-        [Console]::CursorVisible = $cursorVisible
-    }
-    Write-Host ''
-    @($rows | Where-Object Selected | ForEach-Object { $_.Feature.Name })
+    $choice.Names
 }
 
 

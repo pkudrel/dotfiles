@@ -18,6 +18,7 @@ settings from there (fix: run `install.ps1 profile git` from `$HOME\.dotfiles`).
   - [Windows install steps (install.ps1)](#windows-install-steps-installps1)
   - [Windows admin steps (admin.ps1)](#windows-admin-steps-adminps1)
   - [Windows optional features](#windows-optional-features)
+  - [Windows: moving to another machine (browser profiles)](#windows-moving-to-another-machine-browser-profiles)
   - [Windows: PowerShell profile and commands](#windows-powershell-profile-and-commands)
 - [SSH keys in WSL (Bitwarden)](#ssh-keys-in-wsl-bitwarden)
 - [Private files (bitwarden-store)](#private-files-bitwarden-store)
@@ -220,6 +221,31 @@ The selection is remembered in `~\.config\dotfiles\features`; `install.ps1` upda
 New winget feature: one line in `features/winget.txt`. Other: a script `features/NN-name.ps1` (line 1 = description,
 actions `status` / `install`, like the three above).
 
+### Windows: moving to another machine (browser profiles)
+
+```powershell
+dlab-migrate-export D:\move                   # on the old machine: checklist of programs with data (Space, Enter)
+dlab-migrate-export D:\move chrome firefox    # the same without the checklist
+dlab-migrate-import D:\move                   # on the new machine: checklist, shows what is replaced, asks "yes"
+dlab-migrate-list [D:\move]                   # programs, their profiles here (and in the export)
+```
+
+`--dry-run` shows what would be copied or replaced; `--yes` imports without asking. Script: `windows\migrate.ps1`.
+
+| Program | Copied | Not copied |
+|---------|--------|------------|
+| `chrome`, `brave` | every profile (`Default`, `Profile N`) and `Local State` from `User Data`: bookmarks, extensions, settings, history | caches, saved passwords (`Login Data`), cookies, the encryption key in `Local State` (`os_crypt`, tied to the old Windows user) |
+| `firefox` | every profile in `profiles.ini` (from `%APPDATA%\Mozilla\Firefox`), `profiles.ini`, `installs.ini` | caches, `logins.json` + `key4.db` (passwords), `cookies.sqlite`, Firefox account sign-in |
+
+- Close the browsers first (also in the tray): a running one stops the export / import.
+- **Import replaces everything the program has on the new machine**: profiles that exist only there, their saved
+  passwords and cookies are removed. No backup. Sign in to websites again afterwards.
+- The export folder is readable without the script: `manifest.json` (when, from which computer, which profiles)
+  and one folder per program in its own layout (`chrome\Default\...`, `firefox\Profiles\...`). Copy it to the new
+  machine yourself (USB, network drive). Exporting again into it replaces only the programs exported that time.
+- New program: a script `windows/migrate/NN-name.ps1` (line 1 = description, actions `status` / `export` / `import`;
+  helpers in `windows/scripts/migrate-lib.ps1`, e.g. another Chromium browser is one line like `20-brave.ps1`).
+
 ### Windows: PowerShell profile and commands
 
 - Edit the profile in the repo (`windows\powershell\profile.ps1`); changes apply in the next `pwsh` tab.
@@ -229,7 +255,7 @@ actions `status` / `install`, like the three above).
   completion load on the first `git`/`docker`/`task` Tab, PSFzf on the first `Ctrl+R`/`Alt+T`/`Alt+C` ([fzf shortcuts](#fzf-shortcuts)).
   The `Profile:` line shows the eager steps and the total in ms.
 - `dlab-*` commands like on Ubuntu (`windows\powershell\dlab.ps1`, `dlab-help`): `dlab-dotfiles-update`, `-status`,
-  `-version`, `-cd`, `-edit`, `dlab-features-select`, `-list`, `-update`, `dlab-store-restore` (and the other `dlab-store-*`), `dlab-terminal-save`,
+  `-version`, `-cd`, `-edit`, `dlab-features-select`, `-list`, `-update`, `dlab-store-restore` (and the other `dlab-store-*`), `dlab-migrate-export`, `-import`, `-list`, `dlab-terminal-save`,
   `dlab-winget-upgradeall`.
   Also `t` (Task).
 - Git on Windows: shared settings in `windows/git/.gitconfig` (`autocrlf=true`, SSH through Windows OpenSSH → Bitwarden);

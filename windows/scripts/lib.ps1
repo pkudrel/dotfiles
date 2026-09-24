@@ -1,4 +1,4 @@
-# Shared helpers for install.ps1, admin.ps1, features.ps1 and their steps. Dot-source it, don't run it.
+# Shared helpers for install.ps1, admin.ps1, features.ps1, migrate.ps1 and their steps. Dot-source it, don't run it.
 
 $WindowsDir  = Split-Path $PSScriptRoot -Parent
 
@@ -75,6 +75,65 @@ function Get-Steps([string] $Directory, [string[]] $Filter) {
 
 function Test-OptIn([string] $Path) {
     [bool] (Get-Content -Path $Path -TotalCount 5 | Where-Object { $_ -match '^#\s*opt-in\b' })
+}
+
+
+######
+###### CHECKLIST
+######
+
+# Checklist driven by keys, redrawn in place (features.ps1, migrate.ps1). $Rows: objects with Name, State (text),
+# Label, Available, Selected; Selected is changed in place. Rows not Available are shown as [-] and skipped by the cursor.
+# Returns Cancelled (Esc / q) and Names (the selected rows). $Verb names Enter in the hint line.
+function Select-FromChecklist([object[]] $Rows, [string] $Verb) {
+    $available = @($Rows | Where-Object Available)
+    $position = 0  # index into $available
+
+    Write-Host ''
+    Write-Host "  Up/Down move, Space toggle, a all/none, Enter $Verb selected, Esc cancel" -ForegroundColor DarkGray
+    Write-Host ''
+    $drawn = $false
+    $cursorVisible = [Console]::CursorVisible
+    [Console]::CursorVisible = $false
+    try {
+        while ($true) {
+            # Back to the first row (ANSI cursor up) and draw over the previous frame.
+            if ($drawn) { Write-Host -NoNewline "`e[$($Rows.Count)A" }
+            $drawn = $true
+            $width = [Math]::Max([Console]::WindowWidth - 1, 20)
+            foreach ($row in $Rows) {
+                $current = [object]::ReferenceEquals($row, $available[$position])
+                $box = if (-not $row.Available) { '[-]' } elseif ($row.Selected) { '[x]' } else { '[ ]' }
+                $line = '{0} {1} {2,-17} {3,-16} {4}' -f $(if ($current) { '>' } else { ' ' }), $box, $row.Name, $row.State, $row.Label
+                # Cut to the window width: a wrapped line would throw off the cursor-up count.
+                if ($line.Length -gt $width) { $line = $line.Substring(0, $width) }
+                $color = if (-not $row.Available) { @{ ForegroundColor = 'DarkGray' } } elseif ($current) { @{ ForegroundColor = 'Cyan' } } else { @{} }
+                Write-Host -NoNewline "`e[2K"
+                Write-Host $line @color
+            }
+
+            $key = [Console]::ReadKey($true)
+            $char = [char]::ToLowerInvariant($key.KeyChar)
+            if ($key.Key -eq 'Enter') { break }
+            if ($key.Key -eq 'Escape' -or $char -eq 'q') {
+                return [pscustomobject] @{ Cancelled = $true; Names = @() }
+            }
+            if ($key.Key -eq 'UpArrow' -or $char -eq 'k') { $position = ($position - 1 + $available.Count) % $available.Count }
+            elseif ($key.Key -eq 'DownArrow' -or $char -eq 'j') { $position = ($position + 1) % $available.Count }
+            elseif ($key.Key -eq 'Home') { $position = 0 }
+            elseif ($key.Key -eq 'End') { $position = $available.Count - 1 }
+            elseif ($key.Key -eq 'Spacebar') { $available[$position].Selected = -not $available[$position].Selected }
+            elseif ($char -eq 'a') {
+                $all = -not ($available | Where-Object { -not $_.Selected })
+                foreach ($row in $available) { $row.Selected = -not $all }
+            }
+        }
+    }
+    finally {
+        [Console]::CursorVisible = $cursorVisible
+    }
+    Write-Host ''
+    [pscustomobject] @{ Cancelled = $false; Names = @($Rows | Where-Object Selected | ForEach-Object Name) }
 }
 
 
