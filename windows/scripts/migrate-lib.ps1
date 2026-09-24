@@ -5,6 +5,8 @@
 #   status          object: Code (0 data here, 1 no data), Text, Profiles (names), Source (path here), Process
 #   export <folder> copy the data here into <folder> (replaced); returns the profile names
 #   import <folder> replace the data here with <folder>
+#   after-import <folder>  runs once every selected program is imported, for steps that need the person
+#                   (e.g. joining Brave Sync again); does nothing when the program has none
 # The program must not be running for export / import (checked here too).
 
 
@@ -152,7 +154,9 @@ function Get-ChromiumProfiles([string] $UserData) {
     @($names | Where-Object { Test-Path -LiteralPath (Join-Path $UserData $_) -PathType Container } | Sort-Object)
 }
 
-function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $UserData, [string] $Process) {
+# -BraveSync: export also writes the Brave Sync code of each profile (sync-codes.json), after-import joins the chain
+# again with it (the encrypted code copied with the profile cannot be decrypted on another machine).
+function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $UserData, [string] $Process, [switch] $BraveSync) {
     switch ($Action) {
         'status' {
             $profiles = Get-ChromiumProfiles $UserData
@@ -175,6 +179,7 @@ function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $Use
                 Write-Host "    $activity" -ForegroundColor DarkGray
                 Copy-Tree (Join-Path $UserData $name) (Join-Path $Folder $name) -SkipDirs $ChromiumSkipDirs -SkipFiles $ChromiumSkipFiles -Activity $activity
             }
+            if ($BraveSync) { Export-BraveSyncCodes $UserData $Folder $profiles }
             return $profiles
         }
         'import' {
@@ -183,7 +188,123 @@ function Invoke-ChromiumAction([string] $Action, [string] $Folder, [string] $Use
             # The whole User Data folder becomes the export: other profiles, passwords, cookies and caches here are removed.
             Copy-Tree $Folder $UserData -Mirror -Activity "$(Split-Path $Folder -Leaf): import"
         }
-        default { Stop-Install "unknown action: $Action (status | export <folder> | import <folder>)" }
+        'after-import' {
+            if ($BraveSync) { Invoke-BraveSyncJoin $Folder }
+        }
+        default { Stop-Install "unknown action: $Action (status | export <folder> | import <folder> | after-import <folder>)" }
+    }
+}
+
+
+######
+###### BRAVE SYNC
+######
+
+# The Brave Sync code is the chain's 24 BIP39 words, stored in Preferences (brave_sync_v2.seed) encrypted with the
+# browser key. That key (Local State, os_crypt.encrypted_key) is protected by DPAPI for this Windows user, so it is
+# readable here and nowhere else. To join, Brave wants 25 words: the 25th is the BIP39 word numbered by the days since
+# 2022-05-10, valid for a day (brave-core components/brave_sync/time_limited_words.cc).
+$BraveSyncCodesFile = 'sync-codes.json'
+$Bip39Words = $null
+
+# AES-256 key of a Chromium User Data folder (DPAPI, current user).
+function Get-ChromiumKey([string] $UserData) {
+    $state = Get-Content -Raw -LiteralPath (Join-Path $UserData 'Local State') | ConvertFrom-Json
+    $blob = [Convert]::FromBase64String($state.os_crypt.encrypted_key)
+    if ([Text.Encoding]::ASCII.GetString($blob, 0, 5) -ne 'DPAPI') { throw 'os_crypt.encrypted_key is not a DPAPI key' }
+    [Security.Cryptography.ProtectedData]::Unprotect([byte[]] $blob[5..($blob.Length - 1)], $null, 'CurrentUser')
+}
+
+# A value Chromium encrypted with that key: base64 of "v10" + 12-byte nonce + ciphertext + 16-byte tag (AES-GCM).
+# "v20" (app-bound encryption) can only be decrypted by the browser itself.
+function Unprotect-ChromiumValue([byte[]] $Key, [string] $Base64) {
+    $data = [Convert]::FromBase64String($Base64)
+    $version = [Text.Encoding]::ASCII.GetString($data, 0, 3)
+    if ($version -ne 'v10') { throw "encrypted as $version, only v10 can be read" }
+    $nonce = [byte[]] $data[3..14]
+    $tag = [byte[]] $data[($data.Length - 16)..($data.Length - 1)]
+    $cipher = [byte[]] $data[15..($data.Length - 17)]
+    $plain = [byte[]]::new($cipher.Length)
+    $aes = [Security.Cryptography.AesGcm]::new($Key, 16)
+    try { $aes.Decrypt($nonce, $cipher, $tag, $plain) } finally { $aes.Dispose() }
+    [Text.Encoding]::UTF8.GetString($plain)
+}
+
+# The code Brave accepts on $Date (UTC): the 24 words (a 25th given is dropped) + the word of that day.
+function Get-BraveSyncCode([string] $Words, [datetime] $Date = [datetime]::UtcNow) {
+    $pure = @($Words -split '\s+' | Where-Object { $_ } | Select-Object -First 24)
+    if ($pure.Count -ne 24) { throw "a Brave Sync code has 24 words (25 with the day word), got $($pure.Count)" }
+    if (-not $script:Bip39Words) { $script:Bip39Words = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'bip39-english.txt')) }
+    $epoch = [datetime]::new(2022, 5, 10, 0, 0, 0, [DateTimeKind]::Utc)
+    $days = [int] [Math]::Round(($Date.ToUniversalTime() - $epoch).TotalDays, [MidpointRounding]::AwayFromZero)
+    if ($days -lt 0) { throw "date before the Brave Sync v2 epoch: $Date" }
+    "$($pure -join ' ') $($script:Bip39Words[$days % $script:Bip39Words.Count])"
+}
+
+# Writes <folder>\sync-codes.json with the 24 words of each profile that is in a sync chain.
+function Export-BraveSyncCodes([string] $UserData, [string] $Folder, [string[]] $Profiles) {
+    $codes = [ordered] @{}
+    $key = $null
+    foreach ($name in $Profiles) {
+        $preferences = Join-Path $UserData "$name\Preferences"
+        if (-not (Test-Path -LiteralPath $preferences)) { continue }
+        $seed = (Get-Content -Raw -LiteralPath $preferences | ConvertFrom-Json -AsHashtable).brave_sync_v2.seed
+        if (-not $seed) { continue }
+        try {
+            if (-not $key) { $key = Get-ChromiumKey $UserData }
+            $codes[$name] = Unprotect-ChromiumValue $key $seed
+        }
+        catch {
+            Write-Warn "Brave Sync code of $name not read ($($_.Exception.Message)): join the chain by hand after the import"
+        }
+    }
+    if (-not $codes.Count) { return }
+    [ordered] @{
+        warning  = 'Brave Sync codes: full access to everything in the sync chain (passwords too). Keep this export private.'
+        profiles = $codes
+    } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Folder $BraveSyncCodesFile) -Encoding utf8NoBOM
+    Write-Host "    Brave Sync code of $($codes.Keys -join ', ') saved ($BraveSyncCodesFile; joined again at import)" -ForegroundColor DarkGray
+}
+
+function Find-BraveExe {
+    foreach ($base in $env:LOCALAPPDATA, $env:ProgramFiles, ${env:ProgramFiles(x86)}) {
+        if (-not $base) { continue }
+        $exe = Join-Path $base 'BraveSoftware\Brave-Browser\Application\brave.exe'
+        if (Test-Path -LiteralPath $exe) { return $exe }
+    }
+}
+
+# For each profile in sync-codes.json: today's code into the clipboard, Brave opened on the sync setup page of that
+# profile; the person pastes and confirms (joining has no command line or policy), then presses Enter here.
+function Invoke-BraveSyncJoin([string] $Folder) {
+    $file = Join-Path $Folder $BraveSyncCodesFile
+    if (-not (Test-Path -LiteralPath $file)) { return }
+    $codes = (Get-Content -Raw -LiteralPath $file | ConvertFrom-Json -AsHashtable).profiles
+    if (-not $codes -or -not $codes.Count) { return }
+    $exe = Find-BraveExe
+    if (-not $exe) {
+        Write-Warn "Brave Sync: Brave is not installed here; install it, then join the chain with the code from $file"
+        return
+    }
+    if ([Console]::IsInputRedirected) {
+        Write-Warn "Brave Sync: no terminal to wait for you; join the chain by hand with the code from $file"
+        return
+    }
+    Write-Step "Brave Sync: join the chain again ($($codes.Count) profile$(if ($codes.Count -ne 1) { 's' }); the old machine's key does not work here)"
+    try {
+        foreach ($name in $codes.Keys) {
+            Set-Clipboard -Value (Get-BraveSyncCode $codes[$name])
+            Start-Process -FilePath $exe -ArgumentList "--profile-directory=`"$name`"", 'brave://settings/braveSync/setup'
+            Write-Host "    ${name}: the sync code is in the clipboard. In Brave: 'I have a Sync Code' → Ctrl+V → Confirm."
+            Write-Host '    (page not open? type brave://settings/braveSync/setup)' -ForegroundColor DarkGray
+            $answer = Read-Host "    Enter when joined (s = skip $name)"
+            if ($answer -eq 's') { Write-Warn "${name}: Brave Sync skipped (code in $file)" }
+            else { Write-Ok "${name}: Brave Sync joined" }
+        }
+    }
+    finally {
+        # The code opens the whole chain: not left in the clipboard.
+        Set-Clipboard -Value ' '
     }
 }
 
@@ -261,6 +382,7 @@ function Invoke-FirefoxAction([string] $Action, [string] $Folder, [string] $Root
             # The whole Firefox folder becomes the export: other profiles, passwords and cookies here are removed.
             Copy-Tree $Folder $Root -Mirror -Activity "$(Split-Path $Folder -Leaf): import"
         }
-        default { Stop-Install "unknown action: $Action (status | export <folder> | import <folder>)" }
+        'after-import' { }
+        default { Stop-Install "unknown action: $Action (status | export <folder> | import <folder> | after-import <folder>)" }
     }
 }

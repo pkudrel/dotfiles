@@ -23,8 +23,11 @@
   Never exported: caches, saved passwords, cookies. Import replaces the program's data here completely: its other
   profiles, saved passwords and cookies here are gone (sign in again). Close the programs first.
 
-  Programs are the scripts migrate\NN-name.ps1 (line 1 is the description; actions status, export, import:
-  see scripts\migrate-lib.ps1). dlab commands: dlab-migrate-export, dlab-migrate-import, dlab-migrate-list.
+  Brave: the export also holds the Brave Sync code of each profile (brave\sync-codes.json, so treat the export as
+  a secret); after the import Brave opens on each profile's sync setup page with the code in the clipboard.
+
+  Programs are the scripts migrate\NN-name.ps1 (line 1 is the description; actions status, export, import,
+  after-import: see scripts\migrate-lib.ps1). dlab commands: dlab-migrate-export, dlab-migrate-import, dlab-migrate-list.
 #>
 param(
     [Parameter(ValueFromRemainingArguments)]
@@ -392,6 +395,11 @@ function Invoke-Import([object[]] $Catalogue, [string] $Folder, [string[]] $Name
             Write-Warn "import $name failed: $($_.Exception.Message)"
             $failed += $name
         }
+    }
+    # Steps that need the person (e.g. joining Brave Sync), after all the copying.
+    foreach ($name in $Names | Where-Object { $_ -notin $failed }) {
+        try { & (Get-Program $Catalogue $name).Path after-import (Join-Path $Folder $name) }
+        catch { Write-Warn "${name}: $($_.Exception.Message)" }
     }
     if ($failed) { Stop-Install "failed imports: $($failed -join ' ')" }
     Write-Ok 'import done: start the programs (saved passwords and cookies are not there: sign in again)'
