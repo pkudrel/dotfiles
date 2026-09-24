@@ -11,7 +11,7 @@
   <folder> defaults to C:\!dlab-migrate; a first argument that is a program name is a program, not a folder
   --dry-run (with export / import) shows what would be copied / replaced and changes nothing
   --yes (with import) replaces without asking
-  --zip (with export) also packs the folder into one file inside it, <folder>\<folder>-<computer>-<date>.zip
+  export also packs the folder into one file inside it, <folder>\<folder>-<computer>-<date>.zip (--no-zip: not)
         (not next to it: a normal user cannot create files in C:\); earlier .zip files there are not packed
         (copying one file to a USB stick / network drive is much faster than thousands of small ones);
         import, --list: <folder> can be such a .zip (unpacked into a temp folder for the import); a folder
@@ -38,9 +38,9 @@ $ErrorActionPreference = 'Stop'
 $ProgramsDir   = Join-Path $PSScriptRoot 'migrate'
 $ManifestName  = 'manifest.json'
 $AssumeYes     = $false
-$Zip           = $false
+$Zip           = $true
 $DefaultFolder = 'C:\!dlab-migrate'
-$Usage         = 'usage: migrate.ps1 export [<folder>] [program ...] [--zip] | import [<folder> | <file>.zip] [program ...] | --list [<folder> | <file>.zip] (see --help)'
+$Usage         = 'usage: migrate.ps1 export [<folder>] [program ...] [--no-zip] | import [<folder> | <file>.zip] [program ...] | --list [<folder> | <file>.zip] (see --help)'
 
 
 ######
@@ -146,6 +146,8 @@ function New-ExportZip([string] $Folder) {
     # Inside the folder, not next to it: in C:\ a normal user may create folders but not files.
     $zip = Join-Path $Folder "$name.zip"
     Write-Step "packing $Folder → $zip"
+    # A second export in the same minute: same name, replaced.
+    if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
     $activity = "packing $(Split-Path $zip -Leaf)"
     # Zips of earlier exports lie in the folder itself: not packed again.
     $files = @([IO.Directory]::GetFiles($Folder, '*', [IO.SearchOption]::AllDirectories) |
@@ -407,8 +409,9 @@ if ($Arguments -contains '--dry-run') {
     Write-Warn 'dry run: nothing is changed'
 }
 if ($Arguments -contains '--yes') { $AssumeYes = $true }
-if ($Arguments -contains '--zip') { $Zip = $true }
-$Arguments = @($Arguments | Where-Object { $_ -notin '--dry-run', '--yes', '--zip' })
+if ($Arguments -contains '--no-zip') { $Zip = $false }
+# --zip: the default now, still accepted.
+$Arguments = @($Arguments | Where-Object { $_ -notin '--dry-run', '--yes', '--zip', '--no-zip' })
 
 $catalogue = @(Get-Programs)
 $first = if ($Arguments) { $Arguments[0] } else { '' }
@@ -436,7 +439,7 @@ switch -Regex ($first) {
         if ($first -eq 'export') { Write-Step "export into $folder" }
         $names = @(Resolve-ProgramNames $catalogue $rest)
         if ($first -eq 'export') {
-            if (Test-ZipFile $folder) { Stop-Install "export goes into a folder, not into $folder (--zip packs the folder afterwards)" }
+            if (Test-ZipFile $folder) { Stop-Install "export goes into a folder, not into $folder (the zip is made from the folder afterwards)" }
             Invoke-Export $catalogue $folder $names
         }
         else {

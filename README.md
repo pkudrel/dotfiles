@@ -229,12 +229,12 @@ dlab-migrate-export chrome firefox     # the same without the checklist
 dlab-migrate-import                    # on the new machine: checklist, shows what is replaced, asks "yes"
 dlab-migrate-list                      # programs, their profiles here (and in the export)
 dlab-migrate-export D:\move            # another folder (also for -import and -list)
-dlab-migrate-export --zip              # also packs it into C:\!dlab-migrate\!dlab-migrate-<computer>-<date>.zip
+dlab-migrate-export --no-zip           # without the zip (by default also C:\!dlab-migrate\!dlab-migrate-<computer>-<date>.zip)
 dlab-migrate-import D:\!dlab-migrate-PC1-20260924-1015.zip   # import (and -list) also take that .zip
 dlab-migrate-import                    # C:\!dlab-migrate with only zips in it: imports the newest zip
 ```
 
-The folder is `C:\!dlab-migrate` unless given. `--zip` is for moving the export: the profiles are thousands of
+The folder is `C:\!dlab-migrate` unless given. The export also packs it into one zip (`--no-zip`: not), for moving it: the profiles are thousands of
 small files, and one file copies to a USB stick or a network drive much faster (no compression: profiles are mostly
 compressed already, so packing takes seconds; the folder stays as it is). The zip is written inside the export folder (a normal user cannot create files
 in `C:\`); zips of earlier exports there are not packed again. Import unpacks the .zip into a temp folder first (needs that much free space). `--dry-run` shows what would be copied or replaced; `--yes` imports without asking. Script: `windows\migrate.ps1`.
