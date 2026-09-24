@@ -1,6 +1,6 @@
 # Registry values set by the install step scripts/75-appearance.ps1 (DWORD, current user; the key is created when
 # missing, a value is written only when it differs). One per line:  <registry path> | <value name> | <number>
-# The animation switches themselves (window minimize / maximize, menus, lists, tooltips) are set in the step with
+# The animation switches themselves (window minimize / maximize off; menus, lists, tooltips on) are set in the step with
 # SystemParametersInfo, which applies them at once. Transparency, accent colour and the rest of the taskbar
 # (widgets, task view, pinned apps) are not touched.
 

@@ -1,5 +1,5 @@
-# Windows appearance: all animations on (window minimize / maximize, menus, lists, tooltips, taskbar), Windows dark
-# and apps light, taskbar aligned left with search as an icon. Applied at once, no sign-out.
+# Windows appearance: animations on (menus, lists, tooltips, taskbar) but windows do not animate when minimizing and
+# maximizing, Windows dark and apps light, taskbar aligned left with search as an icon. Applied at once, no sign-out.
 # Animation switches: SystemParametersInfo below; the other values: config\appearance.txt.
 # Transparency, accent colour and the rest of the taskbar stay as they are.
 . (Join-Path $PSScriptRoot 'lib.ps1')
@@ -72,15 +72,16 @@ $switches = @(
 $changed = 0
 $failed = 0
 
-function Set-Switch([string] $Name, [scriptblock] $Get, [scriptblock] $Set) {
-    if (& $Get) { return }
+function Set-Switch([string] $Name, [scriptblock] $Get, [scriptblock] $Set, [bool] $On = $true) {
+    if ((& $Get) -eq $On) { return }
+    $state, $was = if ($On) { 'on', 'off' } else { 'off', 'on' }
     if ($DotfilesDryRun) {
-        Write-Would "turn on: $Name"
+        Write-Would "turn ${state}: $Name"
         return
     }
     try {
         & $Set
-        Write-Ok "${Name}: on (was off)"
+        Write-Ok "${Name}: $state (was $was)"
         $script:changed++
     }
     catch {
@@ -91,7 +92,7 @@ function Set-Switch([string] $Name, [scriptblock] $Get, [scriptblock] $Set) {
 
 $first = $switches[0]
 Set-Switch $first.Name { [DlabUser32]::GetBool($first.Get) } { [DlabUser32]::SetBool($first.Set, $true) }
-Set-Switch 'windows animate when minimizing and maximizing' { [DlabUser32]::GetMinAnimate() } { [DlabUser32]::SetMinAnimate($true) }
+Set-Switch 'windows animate when minimizing and maximizing' { [DlabUser32]::GetMinAnimate() } { [DlabUser32]::SetMinAnimate($false) } $false
 foreach ($switch in $switches | Select-Object -Skip 1) {
     Set-Switch $switch.Name { [DlabUser32]::GetBool($switch.Get) } { [DlabUser32]::SetBool($switch.Set, $true) }
 }
