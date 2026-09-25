@@ -19,15 +19,18 @@ elseif ($DryRun) {
     Write-Ok "would uninstall OneDrive ($($exe[0]))"
 }
 else {
+    # Not winget: it refuses the per-user OneDrive when elevated ("cannot be uninstalled when running with
+    # administrator privileges"). OneDriveSetup.exe uninstalls it for this user also from an elevated run.
     Get-Process -Name OneDrive -ErrorAction SilentlyContinue | Stop-Process -Force
-    if ((Test-Command winget) -and (Test-WingetPackage 'Microsoft.OneDrive')) {
-        winget uninstall --id Microsoft.OneDrive @WingetCommonArgs
-        Write-Ok 'OneDrive uninstalled (winget)'
-    }
-    else {
-        & "$env:SystemRoot\System32\OneDriveSetup.exe" /uninstall
-        Write-Ok 'OneDrive uninstalled (OneDriveSetup.exe)'
-    }
+    $setup = @(@(
+        "$env:SystemRoot\System32\OneDriveSetup.exe"
+        "$env:SystemRoot\SysWOW64\OneDriveSetup.exe"
+    ) | Where-Object { Test-Path -Path $_ })
+    if (-not $setup) { Stop-Install 'OneDriveSetup.exe not found; uninstall OneDrive in Settings > Apps' }
+    Start-Process -FilePath $setup[0] -ArgumentList '/uninstall' -Wait
+    $left = @($exe | Where-Object { Test-Path -Path $_ })
+    if ($left) { Write-Warn "OneDrive still installed ($($left[0])); uninstall it in Settings > Apps" }
+    else { Write-Ok 'OneDrive uninstalled' }
 }
 
 $settings = @(
