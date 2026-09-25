@@ -11,6 +11,8 @@
 
   Features are the lines of features\winget.txt plus the scripts features\NN-name.ps1 (for tools not in winget;
   line 1 is the description, actions "status" (exit 0 installed, 1 not installed, 2 not available) and "install").
+  After every install/update of a feature, features\settings\<name>.ps1 (when there is one) sets the program up;
+  a failing settings file is a warning, the feature still counts as installed.
   The selection is stored per machine in ~\.config\dotfiles\features (not in the repo).
   Unticking a feature only stops updating it; nothing is uninstalled.
 #>
@@ -23,6 +25,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'scripts\lib.ps1')
 
 $FeaturesDir   = Join-Path $PSScriptRoot 'features'
+$SettingsDir   = Join-Path $FeaturesDir 'settings'
 $SelectionFile = Join-Path $DotfilesConfigDir 'features'
 
 
@@ -123,6 +126,27 @@ function Show-Features([object[]] $Catalogue) {
     }
 }
 
+# features\settings\<name>.ps1: run after every install/update, so it must be safe to run again.
+# A failure is only a warning.
+function Invoke-FeatureSettings($Feature) {
+    $path = Join-Path $SettingsDir "$($Feature.Name).ps1"
+    if (-not (Test-Path $path)) { return }
+    if ($DotfilesDryRun) {
+        Write-Would "run settings $($Feature.Name) (features\settings\$($Feature.Name).ps1)"
+        return
+    }
+    Write-Step "settings $($Feature.Name)"
+    try {
+        $global:LASTEXITCODE = 0
+        & $path
+        if ($LASTEXITCODE) { throw "exit code $LASTEXITCODE" }
+        Write-Ok "settings $($Feature.Name)"
+    }
+    catch {
+        Write-Warn "settings $($Feature.Name) failed: $($_.Exception.Message)"
+    }
+}
+
 function Install-Features([object[]] $Catalogue, [string[]] $Names) {
     if (-not $Names) {
         Write-Ok 'no features to install'
@@ -146,6 +170,7 @@ function Install-Features([object[]] $Catalogue, [string[]] $Names) {
         }
         if ($DotfilesDryRun) {
             Write-Would "$counter $(if ($state.Code -eq 0) { 'update' } else { 'install' }) $name ($($state.Text))"
+            Invoke-FeatureSettings $feature
             continue
         }
         Write-Step "$counter feature $name"
@@ -162,7 +187,9 @@ function Install-Features([object[]] $Catalogue, [string[]] $Names) {
         catch {
             Write-Warn "feature $name failed: $($_.Exception.Message)"
             $failed += $name
+            continue
         }
+        Invoke-FeatureSettings $feature
     }
     if ($failed) { Stop-Install "failed features: $($failed -join ' ')" }
     if ($DotfilesDryRun) { return }

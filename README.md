@@ -221,6 +221,9 @@ editplus, irfanview, smplayer). Three are scripts because winget does not have t
 The selection is remembered in `~\.config\dotfiles\features`; `install.ps1` updates those features on every run.
 New winget feature: one line in `features/winget.txt`. Other: a script `features/NN-name.ps1` (line 1 = description,
 actions `status` / `install`, like the three above).
+Settings for a program: `features/settings/<name>.ps1` runs after every install and update of that feature (so it must
+be safe to run again; a failure is only a warning), e.g. [`settings/sbx.ps1`](windows/features/settings/sbx.ps1):
+`sbx settings set clipboard.imagePaste true`.
 
 ### Windows: moving to another machine (browser profiles)
 
