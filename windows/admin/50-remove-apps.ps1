@@ -9,7 +9,13 @@ param([switch] $DryRun, [hashtable] $Options)
 $timeoutSeconds = 180
 
 function Invoke-WindowsPowerShell([string] $Script) {
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("`$ErrorActionPreference = 'Stop'; `$ProgressPreference = 'SilentlyContinue'`n$Script"))
+    # Errors go to stderr as plain text: Windows PowerShell would serialize its own error records there as CLIXML.
+    $prefix = @'
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+trap { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
+'@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("$prefix`n$Script"))
     $errorFile  = New-TemporaryFile
     $outputFile = New-TemporaryFile
     try {
@@ -32,10 +38,14 @@ function Invoke-WindowsPowerShell([string] $Script) {
 
 $names = @(Read-ListFile (Join-Path $WindowsDir 'config\remove-apps.txt'))
 Write-Host '    reading installed apps and the image (can take a minute)...'
+# An image entry whose package family is under Deprovisioned is already gone for new accounts (see below).
 $json = Invoke-WindowsPowerShell @'
+$deprovisioned = @(Get-ChildItem -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned' -ErrorAction SilentlyContinue).PSChildName
 @{
     Installed   = @(Get-AppxPackage -AllUsers | Select-Object Name, PackageFullName)
-    Provisioned = @(Get-AppxProvisionedPackage -Online | Select-Object DisplayName, PackageName)
+    Provisioned = @(Get-AppxProvisionedPackage -Online |
+        Where-Object { $parts = $_.PackageName -split '_'; "$($parts[0])_$($parts[-1])" -notin $deprovisioned } |
+        Select-Object DisplayName, PackageName)
 } | ConvertTo-Json -Depth 3 -Compress
 '@
 $found = $json | ConvertFrom-Json
@@ -54,9 +64,22 @@ foreach ($name in $names) {
     }
     Write-Host "    removing $name ($where)..."
     try {
+        # The image goes first: Remove-AppxPackage -AllUsers deletes the package files, and a later
+        # Remove-AppxProvisionedPackage then fails with "cannot find the path/file specified" (0x80070003/0x80070002).
+        # For an entry already left like that, the Deprovisioned key (what the removal itself writes) keeps the app
+        # away from new accounts and feature updates.
         Invoke-WindowsPowerShell (@(
+            foreach ($image in $images) {
+                $parts = $image.PackageName -split '_'
+                @"
+try { Remove-AppxProvisionedPackage -Online -PackageName '$($image.PackageName)' | Out-Null }
+catch {
+    if (`$_.Exception.HResult -notin -2147024893, -2147024894) { throw }
+    New-Item -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\$($parts[0])_$($parts[-1])' -Force | Out-Null
+}
+"@
+            }
             foreach ($package in $packages) { "Remove-AppxPackage -Package '$($package.PackageFullName)' -AllUsers" }
-            foreach ($image in $images) { "Remove-AppxProvisionedPackage -Online -PackageName '$($image.PackageName)' | Out-Null" }
         ) -join "`n") | Out-Null
         Write-Ok "removed $name ($where)"
     }
